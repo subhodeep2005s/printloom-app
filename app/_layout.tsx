@@ -3,8 +3,10 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { ToastProvider } from "./shared/components/Toast";
 
+import { Image, ActivityIndicator, View } from "react-native";
 import "../global.css";
 import { queryClient } from "./lib/queryClient";
 import setupQueryPersistence from "./lib/queryPersist";
@@ -51,20 +53,34 @@ export default function RootLayout() {
     }
   }, [segments]);
 
-  if (!isReady) return null;
+  if (!isReady) {
+    return (
+      <View style={{ flex: 1, backgroundColor: "#ffffff", justifyContent: "center", alignItems: "center" }}>
+        <StatusBar style="dark" />
+        <Image
+          source={require("../assets/images/icon.png")}
+          style={{ width: 140, height: 140, marginBottom: 32, borderRadius: 32 }}
+          resizeMode="contain"
+        />
+        <ActivityIndicator size="large" color="#EAB308" />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaProvider>
-      <SafeAreaView className="flex-1 bg-white">
-        <StatusBar style="dark" />
-        <QueryClientProvider client={queryClient}>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(auth)" />
-            <Stack.Screen name="(admin)" />
-            <Stack.Screen name="(school)" />
-          </Stack>
-        </QueryClientProvider>
-      </SafeAreaView>
+      <ToastProvider>
+        <View style={{ flex: 1, backgroundColor: "#ffffff" }}>
+          <StatusBar style="dark" />
+          <QueryClientProvider client={queryClient}>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="(auth)" />
+              <Stack.Screen name="(admin)" />
+              <Stack.Screen name="(school)" />
+            </Stack>
+          </QueryClientProvider>
+        </View>
+      </ToastProvider>
     </SafeAreaProvider>
   );
 }

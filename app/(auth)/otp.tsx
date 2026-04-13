@@ -1,14 +1,15 @@
 import { useResendOtp, useVerifyOtp } from "@/app/shared/api/auth.query";
+import { useToast } from "@/app/shared/components/Toast";
 import { router } from "expo-router";
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  Text,
-  TextInput,
-  View,
+    ActivityIndicator,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    Text,
+    TextInput,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -40,6 +41,8 @@ export default function OtpScreen() {
     isPending: isResending,
     isSuccess: resendSuccess,
   } = useResendOtp();
+
+  const toast = useToast();
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -91,6 +94,11 @@ export default function OtpScreen() {
           if (__DEV__) {
             console.log("✅ [OTP] Verification success:", data);
           }
+          toast.show({
+            type: "success",
+            title: "Email Verified!",
+            message: "Your account is now verified",
+          });
           router.replace("/login");
         },
         onError: (err: any) => {
@@ -111,6 +119,11 @@ export default function OtpScreen() {
 
     resendOtp({ email }, {
       onSuccess: () => {
+        toast.show({
+          type: "success",
+          title: "OTP Resent!",
+          message: "Check your email for the new code",
+        });
         setTimer(60);
         setCanResend(false);
         setOtp(["", "", "", "", "", ""]);

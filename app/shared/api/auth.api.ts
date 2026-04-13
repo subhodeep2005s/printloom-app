@@ -11,6 +11,8 @@ import {
   ResendOtpPayload,
   VerifyOtpPayload,
   VerifyOtpResponse,
+  OrganizationDto,
+  UpdateOrganizationPayload,
 } from "../types/auth/types";
 
 export const loginApi = async (data: LoginPayload) => {
@@ -25,7 +27,7 @@ export const getMeApi = async () => {
 
 export const registerApi = async (data: RegisterPayload) => {
   const res = await axiosInstance.post<RegisterResponse>(
-    "/auth/school/register",
+    "/auth/register",
     data
   );
   return res.data;
@@ -64,5 +66,20 @@ export const resetPasswordApi = async (data: ResetPasswordPayload) => {
 
 export const resendOtpApi = async (data: ResendOtpPayload) => {
   const res = await axiosInstance.post<ApiResponse>("/auth/resend-otp", data);
+  return res.data;
+};
+
+export const getOrganizationsApi = async () => {
+  const res = await axiosInstance.get<ApiResponse<OrganizationDto[]>>("/auth/organizations");
+  return res.data;
+};
+
+export const updateOrganizationApi = async (orgId: string, data: UpdateOrganizationPayload) => {
+  const res = await axiosInstance.patch<ApiResponse<OrganizationDto>>(`/auth/organizations/${orgId}`, data);
+  return res.data;
+};
+
+export const deleteOrganizationApi = async (orgId: string) => {
+  const res = await axiosInstance.delete<ApiResponse<OrganizationDto>>(`/auth/organizations/${orgId}`);
   return res.data;
 };

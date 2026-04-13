@@ -1,10 +1,13 @@
 import { useRegister } from "@/app/shared/api/auth.query";
-import { RegisterPayload } from "@/app/shared/types/auth/types";
+import { RegisterPayload, OrganizationType } from "@/app/shared/types/auth/types";
+import { useToast } from "@/app/shared/components/Toast";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   ActivityIndicator,
+  Animated,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -14,24 +17,62 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+const ORGANIZATION_TYPES: { label: string; value: OrganizationType }[] = [
+  { label: "Organization", value: "organization" },
+  { label: "College", value: "college" },
+  { label: "University", value: "university" },
+  { label: "Coaching", value: "coaching" },
+  { label: "Company", value: "company" },
+  { label: "NGO", value: "ngo" },
+  { label: "Government", value: "government" },
+  { label: "Other", value: "other" },
+];
+
 export default function RegisterScreen() {
   const [form, setForm] = useState<RegisterPayload>({
     email: "",
     password: "",
     name: "",
-    address: "",
-    city: "",
-    state: "",
-    zipCode: "",
-    country: "",
-    mobileNumber: "",
+    organizationType: "organization",
   });
   const [showPassword, setShowPassword] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  const { mutate, isPending, isError, error, isSuccess } = useRegister();
+  const { mutate, isPending, isError, error } = useRegister();
+  const toast = useToast();
 
   const handleChange = (key: keyof RegisterPayload, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const openDropdown = () => {
+    setShowDropdown(true);
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const closeDropdown = () => {
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 150,
+      useNativeDriver: true,
+    }).start(() => setShowDropdown(false));
+  };
+
+  const selectType = (value: OrganizationType) => {
+    handleChange("organizationType", value);
+    closeDropdown();
+  };
+
+  const getSelectedLabel = () => {
+    return (
+      ORGANIZATION_TYPES.find((t) => t.value === form.organizationType)
+        ?.label || "Select type"
+    );
   };
 
   const handleRegister = () => {
@@ -41,6 +82,11 @@ export default function RegisterScreen() {
 
     mutate(form, {
       onSuccess: () => {
+        toast.show({
+          type: "success",
+          title: "Account Created!",
+          message: "Please verify your email with OTP",
+        });
         router.replace({
           pathname: "/otp",
           params: { email: form.email },
@@ -84,22 +130,37 @@ export default function RegisterScreen() {
               Create Account
             </Text>
             <Text className="text-gray-500 mt-1 text-base">
-              Register your school
+              Register your organization
             </Text>
           </View>
 
           <View className="space-y-4 pb-8">
             <View>
               <Text className="text-sm font-medium text-gray-700 mb-2">
-                School Name *
+                Organization Name *
               </Text>
               <TextInput
                 className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-4 text-black text-base"
-                placeholder="Enter school name"
+                placeholder="Enter organization name"
                 placeholderTextColor="#9CA3AF"
                 value={form.name}
                 onChangeText={(v) => handleChange("name", v)}
               />
+            </View>
+
+            <View>
+              <Text className="text-sm font-medium text-gray-700 mb-2">
+                Organization Type *
+              </Text>
+              <Pressable
+                className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-4 flex-row items-center justify-between"
+                onPress={openDropdown}
+              >
+                <Text className="text-black text-base">
+                  {getSelectedLabel()}
+                </Text>
+                <Text className="text-gray-400 text-sm">▼</Text>
+              </Pressable>
             </View>
 
             <View>
@@ -142,88 +203,6 @@ export default function RegisterScreen() {
               </View>
             </View>
 
-            <View>
-              <Text className="text-sm font-medium text-gray-700 mb-2">
-                Mobile Number
-              </Text>
-              <TextInput
-                className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-4 text-black text-base"
-                placeholder="Enter mobile number"
-                placeholderTextColor="#9CA3AF"
-                keyboardType="phone-pad"
-                value={form.mobileNumber}
-                onChangeText={(v) => handleChange("mobileNumber", v)}
-              />
-            </View>
-
-            <View>
-              <Text className="text-sm font-medium text-gray-700 mb-2">
-                Address
-              </Text>
-              <TextInput
-                className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-4 text-black text-base"
-                placeholder="Enter address"
-                placeholderTextColor="#9CA3AF"
-                value={form.address}
-                onChangeText={(v) => handleChange("address", v)}
-              />
-            </View>
-
-            <View className="flex-row space-x-3">
-              <View className="flex-1">
-                <Text className="text-sm font-medium text-gray-700 mb-2">
-                  City
-                </Text>
-                <TextInput
-                  className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-4 text-black text-base"
-                  placeholder="City"
-                  placeholderTextColor="#9CA3AF"
-                  value={form.city}
-                  onChangeText={(v) => handleChange("city", v)}
-                />
-              </View>
-              <View className="flex-1">
-                <Text className="text-sm font-medium text-gray-700 mb-2">
-                  State
-                </Text>
-                <TextInput
-                  className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-4 text-black text-base"
-                  placeholder="State"
-                  placeholderTextColor="#9CA3AF"
-                  value={form.state}
-                  onChangeText={(v) => handleChange("state", v)}
-                />
-              </View>
-            </View>
-
-            <View className="flex-row space-x-3">
-              <View className="flex-1">
-                <Text className="text-sm font-medium text-gray-700 mb-2">
-                  Zip Code
-                </Text>
-                <TextInput
-                  className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-4 text-black text-base"
-                  placeholder="Zip"
-                  placeholderTextColor="#9CA3AF"
-                  keyboardType="numeric"
-                  value={form.zipCode}
-                  onChangeText={(v) => handleChange("zipCode", v)}
-                />
-              </View>
-              <View className="flex-1">
-                <Text className="text-sm font-medium text-gray-700 mb-2">
-                  Country
-                </Text>
-                <TextInput
-                  className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-4 text-black text-base"
-                  placeholder="Country"
-                  placeholderTextColor="#9CA3AF"
-                  value={form.country}
-                  onChangeText={(v) => handleChange("country", v)}
-                />
-              </View>
-            </View>
-
             {isError && (
               <View className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
                 <Text className="text-red-600 text-sm">{getErrorMessage()}</Text>
@@ -257,6 +236,58 @@ export default function RegisterScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Organization Type Dropdown Modal */}
+      <Modal
+        visible={showDropdown}
+        transparent
+        animationType="none"
+        onRequestClose={closeDropdown}
+      >
+        <Pressable
+          className="flex-1 bg-black/40 justify-end"
+          onPress={closeDropdown}
+        >
+          <Animated.View
+            style={{ opacity: fadeAnim }}
+            className="bg-white rounded-t-3xl pb-8"
+          >
+            <View className="items-center pt-3 pb-2">
+              <View className="w-10 h-1 bg-gray-300 rounded-full" />
+            </View>
+            <Text className="text-lg font-bold text-black px-6 py-3">
+              Select Organization Type
+            </Text>
+            <ScrollView className="max-h-96">
+              {ORGANIZATION_TYPES.map((type) => {
+                const isSelected = form.organizationType === type.value;
+                return (
+                  <Pressable
+                    key={type.value}
+                    className={`flex-row items-center justify-between px-6 py-4 ${
+                      isSelected ? "bg-yellow-50" : ""
+                    }`}
+                    onPress={() => selectType(type.value)}
+                  >
+                    <Text
+                      className={`text-base ${
+                        isSelected
+                          ? "text-black font-semibold"
+                          : "text-gray-700"
+                      }`}
+                    >
+                      {type.label}
+                    </Text>
+                    {isSelected && (
+                      <Text className="text-yellow-500 text-lg">✓</Text>
+                    )}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </Animated.View>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }

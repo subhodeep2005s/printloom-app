@@ -70,7 +70,7 @@ axiosInstance.interceptors.response.use(
 
     if (error?.response?.status === 401 && !isAuthEndpoint) {
       await SecureStore.deleteItemAsync("access_token");
-      router.replace("/(auth)");
+      router.replace("/(auth)/login");
     }
 
     return Promise.reject(error);

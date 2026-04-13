@@ -17,14 +17,43 @@ const setupQueryPersistence = async () => {
       return;
     }
 
+    const safeAsyncStorage = {
+      getItem: async (key: string) => {
+        try {
+          return await AsyncStorage.getItem(key);
+        } catch (e) {
+          // If a row is corrupted or too big (Android CursorWindow limit), clear it
+          await AsyncStorage.removeItem(key).catch(() => {});
+          return null;
+        }
+      },
+      setItem: async (key: string, value: string) => {
+        try {
+          await AsyncStorage.setItem(key, value);
+        } catch (e) {
+          // Ignore write limits
+        }
+      },
+      removeItem: async (key: string) => {
+        return AsyncStorage.removeItem(key);
+      },
+    };
+
     const persister = createAsyncStoragePersister({
-      storage: AsyncStorage,
+      storage: safeAsyncStorage,
     });
 
     await persistQueryClient({
       queryClient,
       persister,
       maxAge: 1000 * 60 * 60 * 24,
+      dehydrateOptions: {
+        shouldDehydrateQuery: (query) => {
+          // Prevent caching gigabytes of dataset records to AsyncStorage
+          const key = query.queryKey[0];
+          return ["me"].includes(key as string);
+        },
+      },
     });
   } catch (error) {
     if (__DEV__) {

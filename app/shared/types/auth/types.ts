@@ -1,10 +1,21 @@
-export type Role = "admin" | "school";
+export type Role = "admin" | "org";
+
+export type OrganizationType =
+  | "organization"
+  | "college"
+  | "university"
+  | "coaching"
+  | "company"
+  | "ngo"
+  | "government"
+  | "other";
 
 export interface AuthUser {
   id: string;
   email: string;
   name: string;
-  mobileNumber: string;
+  organizationType: OrganizationType | null;
+  mobileNumber: string | null;
   role: Role;
   createdAt: string;
 }
@@ -30,12 +41,7 @@ export interface RegisterPayload {
   email: string;
   password: string;
   name: string;
-  address: string;
-  city: string;
-  state: string;
-  zipCode: string;
-  country: string;
-  mobileNumber: string;
+  organizationType: OrganizationType;
 }
 
 export interface RegisterResponse {
@@ -44,8 +50,7 @@ export interface RegisterResponse {
     id: string;
     email: string;
     name: string;
-    mobileNumber: string;
-    isVerified: boolean;
+    organizationType: OrganizationType;
   };
 }
 
@@ -80,4 +85,20 @@ export interface ApiResponse<T = any> {
   success: boolean;
   message?: string;
   data?: T;
+}
+
+export interface OrganizationDto {
+  id: string;
+  email: string;
+  name: string;
+  organization_type: string;
+  created_at: string;
+  is_active: boolean;
+}
+
+export interface UpdateOrganizationPayload {
+  email?: string;
+  name?: string;
+  organizationType?: string;
+  isActive?: boolean;
 }

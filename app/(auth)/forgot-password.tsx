@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useToast } from "@/app/shared/components/Toast";
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState("");
@@ -23,13 +24,21 @@ export default function ForgotPasswordScreen() {
     error,
   } = useForgotPassword();
 
+  const toast = useToast();
+
   const handleSubmit = () => {
     if (!email.trim()) return;
 
     forgotPassword(
       { email: email.trim() },
       {
-        onSuccess: () => {},
+        onSuccess: () => {
+          toast.show({
+            type: "success",
+            title: "Email Sent!",
+            message: "Check your email for the reset code",
+          });
+        },
       }
     );
   };

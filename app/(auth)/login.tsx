@@ -1,4 +1,5 @@
 import { useLogin } from "@/app/shared/api/auth.query";
+import { useToast } from "@/app/shared/components/Toast";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
@@ -19,6 +20,7 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
 
   const { mutate, isPending, isError, error } = useLogin();
+  const toast = useToast();
 
   const handleLogin = () => {
     if (!email.trim() || !password.trim()) return;
@@ -27,6 +29,11 @@ export default function LoginScreen() {
       { email: email.trim(), password },
       {
         onSuccess: () => {
+          toast.show({
+            type: "success",
+            title: "Welcome back!",
+            message: "Logged in successfully",
+          });
           router.replace("/");
         },
       },

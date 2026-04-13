@@ -8,6 +8,9 @@ import {
   resendOtpApi,
   resetPasswordApi,
   verifyOtpApi,
+  getOrganizationsApi,
+  updateOrganizationApi,
+  deleteOrganizationApi,
 } from "./auth.api";
 import {
   ForgotPasswordPayload,
@@ -16,7 +19,9 @@ import {
   ResetPasswordPayload,
   ResendOtpPayload,
   VerifyOtpPayload,
+  UpdateOrganizationPayload,
 } from "../types/auth/types";
+import { clearOrgId } from "@/app/lib/orgStore";
 
 export const useLogin = () => {
   return useMutation({
@@ -72,6 +77,34 @@ export const useLogout = () => {
 
   return async () => {
     await SecureStore.deleteItemAsync("access_token");
+    await clearOrgId();
     queryClient.clear();
   };
+};
+
+export const useOrganizations = () => {
+  return useQuery({
+    queryKey: ["organizations"],
+    queryFn: async () => {
+      const res = await getOrganizationsApi();
+      return res.data;
+    },
+  });
+};
+
+export const useUpdateOrganization = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ orgId, data }: { orgId: string; data: UpdateOrganizationPayload }) =>
+      updateOrganizationApi(orgId, data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["organizations"] }),
+  });
+};
+
+export const useDeleteOrganization = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (orgId: string) => deleteOrganizationApi(orgId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["organizations"] }),
+  });
 };

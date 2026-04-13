@@ -1,14 +1,15 @@
 import { useResetPassword } from "@/app/shared/api/auth.query";
+import { useToast } from "@/app/shared/components/Toast";
 import { router } from "expo-router";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  Text,
-  TextInput,
-  View,
+    ActivityIndicator,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    Text,
+    TextInput,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -32,6 +33,8 @@ export default function ResetPasswordScreen() {
     error,
   } = useResetPassword();
 
+  const toast = useToast();
+
   const passwordsMatch = password === confirmPassword;
   const isFormValid =
     email.trim() &&
@@ -49,7 +52,13 @@ export default function ResetPasswordScreen() {
         password: password.trim(),
       },
       {
-        onSuccess: () => {},
+        onSuccess: () => {
+          toast.show({
+            type: "success",
+            title: "Password Reset!",
+            message: "You can now sign in with your new password",
+          });
+        },
       }
     );
   };

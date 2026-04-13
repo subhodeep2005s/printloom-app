@@ -1,9 +1,17 @@
 import { useMe } from "@/app/shared/api/auth.query";
 import { Redirect } from "expo-router";
+import * as SecureStore from "expo-secure-store";
+import { useEffect } from "react";
 
 export default function Index() {
   const { data, isLoading, isError } = useMe();
-  console.log(JSON.stringify(data));
+
+  useEffect(() => {
+    if (data?.id) {
+      SecureStore.setItemAsync("org_id", data.id);
+    }
+  }, [data]);
+
   if (isLoading) return null;
 
   if (isError || !data) {
