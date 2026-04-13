@@ -6,8 +6,8 @@ import { OrganizationDto } from "@/app/shared/types/auth/types";
 import { DatasetDto } from "@/app/shared/types/dataset/types";
 import { Ionicons } from "@expo/vector-icons";
 import * as FileSystem from "expo-file-system/legacy";
-import * as Sharing from "expo-sharing";
 import * as Haptics from "expo-haptics";
+import * as Sharing from "expo-sharing";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
