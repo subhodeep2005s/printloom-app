@@ -9,7 +9,7 @@ export const useTemplates = (orgId?: string, datasetId?: string) => {
       const res = await getTemplatesApi(orgId, datasetId);
       return res.data; // Might be undefined but we type it based on ApiResponse
     },
-    enabled: !!orgId,
+    enabled: !!orgId && !!datasetId,
   });
 };
 

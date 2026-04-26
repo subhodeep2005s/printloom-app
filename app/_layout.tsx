@@ -1,15 +1,17 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SecureStore from "expo-secure-store";
+import { Image } from "expo-image";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
+import { ActivityIndicator, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ToastProvider } from "./shared/components/Toast";
 
-import { Image, ActivityIndicator, View } from "react-native";
 import "../global.css";
 import { queryClient } from "./lib/queryClient";
 import setupQueryPersistence from "./lib/queryPersist";
+import { colors } from "./shared/constants/theme";
 
 export default function RootLayout() {
   const router = useRouter();
@@ -27,8 +29,6 @@ export default function RootLayout() {
         const token = await SecureStore.getItemAsync("access_token");
 
         const inAuthGroup = segments[0] === "(auth)";
-        const inAdminGroup = segments[0] === "(admin)";
-        const inSchoolGroup = segments[0] === "(school)";
 
         if (!token && !inAuthGroup) {
           router.replace("/(auth)/login");
@@ -51,18 +51,37 @@ export default function RootLayout() {
     } else {
       setIsReady(true);
     }
-  }, [segments]);
+  }, [router, segments]);
 
   if (!isReady) {
     return (
-      <View style={{ flex: 1, backgroundColor: "#ffffff", justifyContent: "center", alignItems: "center" }}>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: colors.surface,
+          justifyContent: "center",
+          alignItems: "center",
+          paddingHorizontal: 24,
+        }}
+      >
         <StatusBar style="dark" />
+        <View
+          style={{
+            position: "absolute",
+            top: 110,
+            width: 180,
+            height: 180,
+            borderRadius: 999,
+            backgroundColor: colors.goldSoft,
+            opacity: 0.8,
+          }}
+        />
         <Image
           source={require("../assets/images/icon.png")}
-          style={{ width: 140, height: 140, marginBottom: 32, borderRadius: 32 }}
-          resizeMode="contain"
+          style={{ width: 132, height: 132, marginBottom: 24 }}
+          contentFit="contain"
         />
-        <ActivityIndicator size="large" color="#EAB308" />
+        <ActivityIndicator size="large" color={colors.goldDeep} />
       </View>
     );
   }
@@ -70,7 +89,7 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ToastProvider>
-        <View style={{ flex: 1, backgroundColor: "#ffffff" }}>
+        <View style={{ flex: 1, backgroundColor: colors.surface }}>
           <StatusBar style="dark" />
           <QueryClientProvider client={queryClient}>
             <Stack screenOptions={{ headerShown: false }}>

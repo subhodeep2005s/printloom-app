@@ -4,25 +4,28 @@ import { usePrintDataset, useTemplates } from "@/app/shared/api/print.query";
 import { useToast } from "@/app/shared/components/Toast";
 import { OrganizationDto } from "@/app/shared/types/auth/types";
 import { DatasetDto } from "@/app/shared/types/dataset/types";
+import { TemplateDto } from "@/app/shared/types/print/types";
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Haptics from "expo-haptics";
 import * as Sharing from "expo-sharing";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
+    ActivityIndicator,
+    Modal,
+    Platform,
+    Pressable,
+    ScrollView,
+    Text,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function IdCardsScreen() {
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
   const [selectedDatasetId, setSelectedDatasetId] = useState<string | null>(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
 
   const [showOrgPicker, setShowOrgPicker] = useState(false);
   const [showDatasetPicker, setShowDatasetPicker] = useState(false);
@@ -30,7 +33,7 @@ export default function IdCardsScreen() {
   const toast = useToast();
 
   const { data: orgsData, isLoading: orgsLoading } = useOrganizations();
-  const orgs = orgsData || [];
+  const orgs = useMemo(() => orgsData ?? [], [orgsData]);
 
   useEffect(() => {
     if (!selectedOrgId && orgs.length > 0) {
@@ -41,7 +44,7 @@ export default function IdCardsScreen() {
   const currentOrg = orgs.find((o) => o.id === selectedOrgId) ?? null;
 
   const { data: datasetsData, isLoading: datasetsLoading } = useDatasets(selectedOrgId);
-  const datasets = datasetsData?.items ?? [];
+  const datasets = useMemo(() => datasetsData?.items ?? [], [datasetsData]);
 
   useEffect(() => {
     if (datasets.length > 0) {
@@ -55,11 +58,27 @@ export default function IdCardsScreen() {
 
   const currentDataset = datasets.find((d) => d.id === selectedDatasetId) ?? null;
 
-  const { data: templates } = useTemplates(selectedOrgId || undefined, selectedDatasetId || undefined);
+  const {
+    data: templates,
+    isLoading: templatesLoading,
+  } = useTemplates(selectedOrgId || undefined, selectedDatasetId || undefined);
   const { mutate: doPrint, isPending: isPrinting } = usePrintDataset();
 
+  useEffect(() => {
+    if (!templates?.length) {
+      setSelectedTemplateId(null);
+      return;
+    }
+
+    if (selectedTemplateId && !templates.some((template) => template.id === selectedTemplateId)) {
+      setSelectedTemplateId(null);
+    }
+  }, [selectedTemplateId, templates]);
+
+  const selectedTemplate = templates?.find((template) => template.id === selectedTemplateId) ?? null;
+
   const handlePrint = async () => {
-    if (!selectedOrgId || !selectedDatasetId) return;
+    if (!selectedOrgId || !selectedDatasetId || !selectedTemplateId) return;
 
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
@@ -72,16 +91,14 @@ export default function IdCardsScreen() {
       return;
     }
 
-    const defaultTemplate = templates.find((t) => t.isDefault) || templates[0];
-
     doPrint(
       {
         datasetId: selectedDatasetId,
         data: {
-          templateId: defaultTemplate.id,
+          templateId: selectedTemplateId,
           orgId: selectedOrgId,
           page: 1,
-          pageSize: 500, // Or whatever limit fits
+          pageSize: 500,
         },
       },
       {
@@ -116,8 +133,8 @@ export default function IdCardsScreen() {
                 const saveBase64 = async (b64: string, path: string) => {
                   try {
                     await FileSystem.writeAsStringAsync(path, b64, { encoding: "base64" });
-                  } catch (e) {
-                    console.error("Write error:", e);
+                  } catch (error) {
+                    console.error("Write error:", error);
                   }
                 };
 
@@ -140,8 +157,8 @@ export default function IdCardsScreen() {
                           toast.show({ type: "success", title: "Saved", message: "ZIP saved to Documents/Downloads" });
                           return;
                         }
-                      } catch (e) {
-                        console.error('SAF error:', e);
+                      } catch (error) {
+                        console.error('SAF error:', error);
                       }
                     }
 
@@ -167,7 +184,7 @@ export default function IdCardsScreen() {
                           toast.show({ type: "success", title: "Saved", message: "ZIP saved to your directory" });
                           return;
                         }
-                      } catch (e) {}
+                      } catch {}
                   }
 
                   await saveBase64(res, targetPath);
@@ -290,7 +307,7 @@ export default function IdCardsScreen() {
           </Pressable>
         </View>
 
-        {/* Preview / Template Status */}
+        {/* Template Status */}
         {selectedDatasetId && currentDataset && (
           <View className="mb-8 p-5 bg-yellow-50 rounded-2xl border border-yellow-100">
             <View className="flex-row items-center mb-2">
@@ -301,8 +318,15 @@ export default function IdCardsScreen() {
               • Dataset has <Text className="font-bold">{currentDataset.totalRecords}</Text> eligible records.
             </Text>
             <Text className="text-yellow-700 text-sm">
-              • {templates && templates.length > 0 ? (
-                <Text>Using default template: <Text className="font-bold">{templates.find(t => t.isDefault)?.name || templates[0].name}</Text></Text>
+              • {templatesLoading ? (
+                "Loading templates..."
+              ) : templates && templates.length > 0 ? (
+                <Text>
+                  {templates.length} templates found.{" "}
+                  <Text className="font-bold">
+                    {selectedTemplate ? `Selected: ${selectedTemplate.name}` : "Select one to continue."}
+                  </Text>
+                </Text>
               ) : (
                 <Text className="text-red-500 font-bold">No template available. Create one to print.</Text>
               )}
@@ -310,14 +334,51 @@ export default function IdCardsScreen() {
           </View>
         )}
 
+        {/* Template Picker */}
+        {selectedDatasetId ? (
+          <View className="mb-8">
+            <Text className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 ml-1">
+              Available Templates
+            </Text>
+
+            {templatesLoading ? (
+              <View className="py-8 items-center justify-center">
+                <ActivityIndicator color="#EAB308" />
+                <Text className="text-gray-400 text-sm mt-2">Loading templates...</Text>
+              </View>
+            ) : templates && templates.length > 0 ? (
+              <View className="gap-4">
+                {templates.map((template) => (
+                  <TemplateCard
+                    key={template.id}
+                    template={template}
+                    selected={selectedTemplateId === template.id}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      setSelectedTemplateId(template.id);
+                    }}
+                  />
+                ))}
+              </View>
+            ) : (
+              <View className="bg-gray-50 rounded-2xl border border-gray-200 p-5">
+                <Text className="text-black font-semibold">No templates for this dataset</Text>
+                <Text className="text-gray-500 text-sm mt-1">
+                  Create a template first, then come back to generate the ZIP.
+                </Text>
+              </View>
+            )}
+          </View>
+        ) : null}
+
         {/* Action Button */}
         {selectedDatasetId && (
           <Pressable
             className={`rounded-2xl py-4 items-center flex-row justify-center ${
-              isPrinting ? "bg-gray-800" : "bg-black"
+              isPrinting || !selectedTemplateId ? "bg-gray-800" : "bg-black"
             }`}
             onPress={handlePrint}
-            disabled={isPrinting}
+            disabled={isPrinting || !selectedTemplateId}
           >
             {isPrinting ? (
               <>
@@ -330,7 +391,7 @@ export default function IdCardsScreen() {
               <>
                 <Ionicons name="print" size={20} color="#EAB308" />
                 <Text className="text-yellow-400 font-bold text-base ml-2">
-                  Print Data & Download ZIP
+                  {selectedTemplateId ? "Print Data & Download ZIP" : "Select a Template First"}
                 </Text>
               </>
             )}
@@ -364,6 +425,78 @@ export default function IdCardsScreen() {
         }}
       />
     </SafeAreaView>
+  );
+}
+
+function TemplateCard({
+  template,
+  selected,
+  onPress,
+}: {
+  template: TemplateDto;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  const backgroundImage = template.canvas.backgroundImage;
+  const imageCount = template.canvas.elements.filter((element) => element.type === "image").length;
+  const textCount = template.canvas.elements.filter((element) => element.type === "text").length;
+
+  return (
+    <Pressable
+      className={`rounded-2xl border p-4 ${selected ? "bg-yellow-50 border-yellow-400" : "bg-white border-gray-200"}`}
+      onPress={onPress}
+    >
+      <View className="flex-row items-start">
+        <View className="w-24 h-32 rounded-xl overflow-hidden bg-gray-100 border border-gray-200">
+          {backgroundImage ? (
+            <Image
+              source={{ uri: backgroundImage }}
+              contentFit="cover"
+              style={{ width: "100%", height: "100%" }}
+            />
+          ) : (
+            <View className="flex-1 items-center justify-center">
+              <Ionicons name="image-outline" size={24} color="#9CA3AF" />
+            </View>
+          )}
+        </View>
+
+        <View className="flex-1 ml-4">
+          <View className="flex-row items-center justify-between">
+            <Text className="text-base font-bold text-black flex-1 pr-3">{template.name}</Text>
+            {selected ? (
+              <View className="w-7 h-7 rounded-full bg-yellow-400 items-center justify-center">
+                <Ionicons name="checkmark" size={16} color="#111827" />
+              </View>
+            ) : null}
+          </View>
+
+          <View className="flex-row flex-wrap mt-2 gap-2">
+            {template.isDefault ? (
+              <View className="bg-yellow-100 px-2.5 py-1 rounded-full">
+                <Text className="text-yellow-800 text-xs font-semibold">Default</Text>
+              </View>
+            ) : null}
+            <View className="bg-gray-100 px-2.5 py-1 rounded-full">
+              <Text className="text-gray-700 text-xs font-semibold">
+                {template.canvas.width} x {template.canvas.height}
+              </Text>
+            </View>
+          </View>
+
+          <Text className="text-gray-500 text-sm mt-3">
+            {textCount} text fields, {imageCount} image fields
+          </Text>
+          <Text className="text-gray-400 text-xs mt-1">
+            Updated {new Date(template.updatedAt).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })}
+          </Text>
+        </View>
+      </View>
+    </Pressable>
   );
 }
 

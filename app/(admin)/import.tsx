@@ -1,20 +1,20 @@
-import { useImportJobs, useUploadImport } from "@/app/shared/api/import.query";
 import { useOrganizations } from "@/app/shared/api/auth.query";
+import { useImportJobs, useUploadImport } from "@/app/shared/api/import.query";
 import { useToast } from "@/app/shared/components/Toast";
-import { ImportJobDto, ImportJobStatus } from "@/app/shared/types/import/types";
 import { OrganizationDto } from "@/app/shared/types/auth/types";
+import { ImportJobDto, ImportJobStatus } from "@/app/shared/types/import/types";
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import * as Haptics from "expo-haptics";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  Modal,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  Text,
-  View,
+    ActivityIndicator,
+    Modal,
+    Pressable,
+    RefreshControl,
+    ScrollView,
+    Text,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -68,7 +68,7 @@ export default function AdminImportScreen() {
   const { mutate: upload, isPending: isUploading } = useUploadImport();
   
   const { data: orgsData, isLoading: orgsLoading } = useOrganizations();
-  const orgs = orgsData || [];
+  const orgs = useMemo(() => orgsData ?? [], [orgsData]);
 
   useEffect(() => {
     if (!selectedOrgId && orgs.length > 0) {

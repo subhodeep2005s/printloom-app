@@ -9,6 +9,7 @@ import {
   listDatasetsApi,
   listRecordsApi,
   updateRecordApi,
+  uploadImageApi,
 } from "./dataset.api";
 
 export const useDatasets = (orgId: string | null) => {
@@ -72,5 +73,17 @@ export const useDeleteRecord = () => {
     mutationFn: (p: { recordId: string; orgId?: string }) =>
       deleteRecordApi(p.recordId, p.orgId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["records"] }),
+  });
+};
+
+/**
+ * Upload image to /datasets/upload-image → returns S3 key/path.
+ * The returned key should then be set in the record's image field
+ * and saved via useUpdateRecord.
+ */
+export const useUploadImage = () => {
+  return useMutation({
+    mutationFn: (p: { photoUri: string; orgId?: string }) =>
+      uploadImageApi(p.photoUri, p.orgId),
   });
 };

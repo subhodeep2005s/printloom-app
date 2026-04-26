@@ -1,17 +1,16 @@
 import { useResendOtp, useVerifyOtp } from "@/app/shared/api/auth.query";
+import { AuthShell } from "@/app/shared/components/auth/AuthShell";
 import { useToast } from "@/app/shared/components/Toast";
-import { router } from "expo-router";
+import { colors } from "@/app/shared/constants/theme";
+import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    Text,
-    TextInput,
-    View,
+  ActivityIndicator,
+  Pressable,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function OtpScreen() {
   const params = useLocalSearchParams();
@@ -19,10 +18,6 @@ export default function OtpScreen() {
     typeof params.email === "string"
       ? params.email
       : params.email?.[0] ?? "";
-
-  if (__DEV__ && email) {
-    console.log("📧 [OTP] Screen loaded with email:", email);
-  }
 
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const inputRefs = useRef<(TextInput | null)[]>([]);
@@ -39,7 +34,6 @@ export default function OtpScreen() {
   const {
     mutate: resendOtp,
     isPending: isResending,
-    isSuccess: resendSuccess,
   } = useResendOtp();
 
   const toast = useToast();
@@ -83,32 +77,16 @@ export default function OtpScreen() {
     const code = otpCode || otp.join("");
     if (code.length !== 6) return;
 
-    if (__DEV__) {
-      console.log("🔐 [OTP] Verifying with:", { email, code, codeLength: code.length });
-    }
-
     verifyOtp(
       { email, otp: code },
       {
-        onSuccess: (data) => {
-          if (__DEV__) {
-            console.log("✅ [OTP] Verification success:", data);
-          }
+        onSuccess: () => {
           toast.show({
             type: "success",
             title: "Email Verified!",
             message: "Your account is now verified",
           });
           router.replace("/login");
-        },
-        onError: (err: any) => {
-          if (__DEV__) {
-            console.log("❌ [OTP] Verification failed:", {
-              message: err?.response?.data?.message,
-              status: err?.response?.status,
-              data: err?.response?.data,
-            });
-          }
         },
       }
     );
@@ -139,107 +117,76 @@ export default function OtpScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1"
-      >
-        <View className="flex-row items-center px-6 py-4 border-b border-gray-100">
-          <Pressable
-            className="w-10 h-10 items-center justify-center"
-            onPress={() => router.back()}
-          >
-            <Text className="text-2xl text-black">←</Text>
-          </Pressable>
-          <Text className="text-xl font-bold text-black ml-2">
-            Verify OTP
+    <AuthShell
+      backButton
+      eyebrow="Verification"
+      title="Confirm your email"
+      subtitle={`We sent a 6-digit code to ${email || "your email address"}.`}
+    >
+      <View className="mb-6 flex-row justify-between">
+        {otp.map((digit, index) => (
+          <TextInput
+            key={index}
+            ref={(ref) => {
+              inputRefs.current[index] = ref;
+            }}
+            className="h-14 w-12 rounded-2xl border text-center text-2xl font-bold"
+            style={{ backgroundColor: colors.surface, borderColor: colors.border, color: colors.ink }}
+            keyboardType="number-pad"
+            maxLength={1}
+            value={digit}
+            onChangeText={(value) => handleOtpChange(value, index)}
+            onKeyPress={(e) => handleKeyPress(e, index)}
+          />
+        ))}
+      </View>
+
+      {isVerifyError ? (
+        <View
+          className="mb-4 rounded-2xl px-4 py-3"
+          style={{ backgroundColor: "#FEF2F2", borderWidth: 1, borderColor: "#FECACA" }}
+        >
+          <Text className="text-center text-sm" style={{ color: colors.danger }}>
+            {getErrorMessage()}
           </Text>
         </View>
+      ) : null}
 
-        <View className="flex-1 px-6 justify-center">
-          <View className="mb-12">
-            <View className="w-16 h-16 bg-yellow-400 rounded-2xl items-center justify-center mb-6">
-              <Text className="text-black text-3xl font-bold">✓</Text>
-            </View>
-            <Text className="text-3xl font-bold text-black">
-              Verification
-            </Text>
-            <Text className="text-3xl font-bold text-black">Code</Text>
-            <Text className="text-gray-500 mt-3 text-base">
-              We sent a code to{"\n"}
-              <Text className="text-black font-medium">{email}</Text>
-            </Text>
-          </View>
+      <Pressable
+        className="mb-6 items-center rounded-[24px] py-4"
+        style={{ backgroundColor: isVerifying || otp.join("").length !== 6 ? "#D1D5DB" : colors.ink }}
+        onPress={() => handleVerify()}
+        disabled={isVerifying || otp.join("").length !== 6}
+      >
+        {isVerifying ? (
+          <ActivityIndicator color={colors.gold} />
+        ) : (
+          <Text className="text-base font-semibold" style={{ color: colors.goldSoft }}>
+            Verify
+          </Text>
+        )}
+      </Pressable>
 
-          <View className="flex-row justify-between mb-8">
-            {otp.map((digit, index) => (
-              <TextInput
-                key={index}
-                ref={(ref) => { inputRefs.current[index] = ref; }}
-                className="w-12 h-14 bg-gray-50 border border-gray-200 rounded-xl text-center text-2xl font-bold text-black"
-                keyboardType="number-pad"
-                maxLength={1}
-                value={digit}
-                onChangeText={(value) => handleOtpChange(value, index)}
-                onKeyPress={(e) => handleKeyPress(e, index)}
-              />
-            ))}
-          </View>
-
-          {isVerifyError && (
-            <View className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4">
-              <Text className="text-red-600 text-sm text-center">
-                {getErrorMessage()}
-              </Text>
-            </View>
-          )}
-
-          <Pressable
-            className={`rounded-xl py-4 items-center mb-6 ${
-              isVerifying || otp.join("").length !== 6 ? "bg-gray-300" : "bg-black"
-            }`}
-            onPress={() => handleVerify()}
-            disabled={isVerifying || otp.join("").length !== 6}
-          >
-            {isVerifying ? (
-              <ActivityIndicator color="#FBBF24" />
+      <View className="flex-row items-center justify-center">
+        <Text className="text-sm" style={{ color: colors.inkSoft }}>
+          {canResend ? "Didn’t receive code? " : "Resend in "}
+        </Text>
+        {canResend ? (
+          <Pressable onPress={handleResend} disabled={isResending}>
+            {isResending ? (
+              <ActivityIndicator size="small" color={colors.gold} />
             ) : (
-              <Text className="text-yellow-400 font-semibold text-base">
-                Verify
+              <Text className="text-sm font-semibold" style={{ color: colors.goldDeep }}>
+                Resend
               </Text>
             )}
           </Pressable>
-
-          <View className="flex-row justify-center items-center">
-            <Text className="text-gray-500 text-sm">
-              {canResend ? "Didn't receive code? " : "Resend in "}
-            </Text>
-            {canResend ? (
-              <Pressable
-                onPress={handleResend}
-                disabled={isResending}
-              >
-                {isResending ? (
-                  <ActivityIndicator size="small" color="#FBBF24" />
-                ) : (
-                  <Text className="text-yellow-500 font-semibold text-sm">
-                    Resend
-                  </Text>
-                )}
-              </Pressable>
-            ) : (
-              <Text className="text-black font-semibold text-sm">
-                {timer}s
-              </Text>
-            )}
-          </View>
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+        ) : (
+          <Text className="text-sm font-semibold" style={{ color: colors.ink }}>
+            {timer}s
+          </Text>
+        )}
+      </View>
+    </AuthShell>
   );
-}
-
-function useLocalSearchParams() {
-  const { useLocalSearchParams } = require("expo-router");
-  return useLocalSearchParams();
 }

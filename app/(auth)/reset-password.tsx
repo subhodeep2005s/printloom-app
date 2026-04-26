@@ -1,17 +1,11 @@
 import { useResetPassword } from "@/app/shared/api/auth.query";
+import { AuthField } from "@/app/shared/components/auth/AuthField";
+import { AuthShell } from "@/app/shared/components/auth/AuthShell";
 import { useToast } from "@/app/shared/components/Toast";
-import { router } from "expo-router";
+import { colors } from "@/app/shared/constants/theme";
+import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import {
-    ActivityIndicator,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    Text,
-    TextInput,
-    View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
 export default function ResetPasswordScreen() {
   const params = useLocalSearchParams();
@@ -70,154 +64,95 @@ export default function ResetPasswordScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1"
-      >
-        <View className="flex-row items-center px-6 py-4 border-b border-gray-100">
-          <Pressable
-            className="w-10 h-10 items-center justify-center"
-            onPress={() => router.back()}
-          >
-            <Text className="text-2xl text-black">←</Text>
-          </Pressable>
-          <Text className="text-xl font-bold text-black ml-2">
-            Reset Password
+    <AuthShell
+      backButton
+      eyebrow="Password update"
+      title="Choose a new password"
+      subtitle="Enter the reset code you received and set a fresh password for your account."
+    >
+      {isSuccess ? (
+        <View
+          className="rounded-[24px] p-6"
+          style={{ backgroundColor: "#F0FDF4", borderWidth: 1, borderColor: "#BBF7D0" }}
+        >
+          <Text className="text-center text-xl font-semibold" style={{ color: colors.success }}>
+            Password Reset
           </Text>
+          <Text className="mt-2 text-center text-sm" style={{ color: colors.inkSoft }}>
+            Your password has been updated successfully.
+          </Text>
+          <Pressable
+            className="mt-5 items-center rounded-[20px] py-3"
+            style={{ backgroundColor: colors.ink }}
+            onPress={() => router.replace("/(auth)/login")}
+          >
+            <Text className="font-semibold" style={{ color: colors.goldSoft }}>
+              Sign In
+            </Text>
+          </Pressable>
         </View>
+      ) : (
+        <View className="gap-4">
+          <AuthField
+            label="Reset Code"
+            icon="key-outline"
+            placeholder="Enter reset code"
+            autoCapitalize="none"
+            autoCorrect={false}
+            value={otp}
+            onChangeText={setOtp}
+          />
 
-        <View className="flex-1 px-6 justify-center">
-          {isSuccess ? (
-            <View className="bg-green-50 border border-green-200 rounded-2xl p-6">
-              <View className="w-16 h-16 bg-green-100 rounded-full items-center justify-center mb-4 mx-auto">
-                <Text className="text-green-600 text-3xl">✓</Text>
-              </View>
-              <Text className="text-green-800 font-semibold text-xl text-center mb-2">
-                Password Reset!
+          <AuthField
+            label="New Password"
+            icon="lock-closed-outline"
+            placeholder="Min. 6 characters"
+            secureTextEntry={!showPassword}
+            value={password}
+            onChangeText={setPassword}
+            secureToggle={{
+              visible: showPassword,
+              onToggle: () => setShowPassword((value) => !value),
+            }}
+          />
+
+          <AuthField
+            label="Confirm Password"
+            icon="shield-checkmark-outline"
+            placeholder="Confirm new password"
+            secureTextEntry={!showPassword}
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            error={confirmPassword && !passwordsMatch ? "Passwords don’t match" : null}
+          />
+
+          {isError ? (
+            <View
+              className="rounded-2xl px-4 py-3"
+              style={{ backgroundColor: "#FEF2F2", borderWidth: 1, borderColor: "#FECACA" }}
+            >
+              <Text className="text-sm" style={{ color: colors.danger }}>
+                {getErrorMessage()}
               </Text>
-              <Text className="text-green-700 text-sm text-center mb-6">
-                Your password has been successfully reset.
-              </Text>
-              <Pressable
-                className="bg-black rounded-xl py-3 items-center"
-                onPress={() => router.replace("/login" as any)}
-              >
-                <Text className="text-yellow-400 font-semibold">
-                  Sign In
-                </Text>
-              </Pressable>
             </View>
-          ) : (
-            <>
-              <View className="mb-10">
-                <View className="w-16 h-16 bg-yellow-400 rounded-2xl items-center justify-center mb-6">
-                  <Text className="text-black text-3xl font-bold">🔑</Text>
-                </View>
-                <Text className="text-3xl font-bold text-black">
-                  New Password
-                </Text>
-                <Text className="text-gray-500 mt-3 text-base">
-                  Enter the reset code and your new password
-                </Text>
-              </View>
+          ) : null}
 
-              <View className="space-y-4">
-                <View>
-                  <Text className="text-sm font-medium text-gray-700 mb-2">
-                    Reset Code
-                  </Text>
-                  <TextInput
-                    className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-4 text-black text-base"
-                    placeholder="Enter reset code"
-                    placeholderTextColor="#9CA3AF"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    value={otp}
-                    onChangeText={setOtp}
-                  />
-                </View>
-
-                <View>
-                  <Text className="text-sm font-medium text-gray-700 mb-2">
-                    New Password
-                  </Text>
-                  <View className="relative">
-                    <TextInput
-                      className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-4 text-black text-base pr-12"
-                      placeholder="Min. 6 characters"
-                      placeholderTextColor="#9CA3AF"
-                      secureTextEntry={!showPassword}
-                      value={password}
-                      onChangeText={setPassword}
-                    />
-                    <Pressable
-                      className="absolute right-4 top-1/2 -translate-y-1/2"
-                      onPress={() => setShowPassword(!showPassword)}
-                    >
-                      <Text className="text-gray-500 text-sm">
-                        {showPassword ? "Hide" : "Show"}
-                      </Text>
-                    </Pressable>
-                  </View>
-                </View>
-
-                <View>
-                  <Text className="text-sm font-medium text-gray-700 mb-2">
-                    Confirm Password
-                  </Text>
-                  <TextInput
-                    className={`bg-gray-50 border rounded-xl px-4 py-4 text-black text-base ${
-                      confirmPassword && !passwordsMatch
-                        ? "border-red-500"
-                        : "border-gray-200"
-                    }`}
-                    placeholder="Confirm new password"
-                    placeholderTextColor="#9CA3AF"
-                    secureTextEntry={!showPassword}
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
-                  />
-                  {confirmPassword && !passwordsMatch && (
-                    <Text className="text-red-500 text-xs mt-1">
-                      Passwords don't match
-                    </Text>
-                  )}
-                </View>
-
-                {isError && (
-                  <View className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-                    <Text className="text-red-600 text-sm">
-                      {getErrorMessage()}
-                    </Text>
-                  </View>
-                )}
-
-                <Pressable
-                  className={`rounded-xl py-4 items-center mt-4 ${
-                    isPending || !isFormValid ? "bg-gray-300" : "bg-black"
-                  }`}
-                  onPress={handleSubmit}
-                  disabled={isPending || !isFormValid}
-                >
-                  {isPending ? (
-                    <ActivityIndicator color="#FBBF24" />
-                  ) : (
-                    <Text className="text-yellow-400 font-semibold text-base">
-                      Reset Password
-                    </Text>
-                  )}
-                </Pressable>
-              </View>
-            </>
-          )}
+          <Pressable
+            className="mt-2 items-center rounded-[24px] py-4"
+            style={{ backgroundColor: isPending || !isFormValid ? "#D1D5DB" : colors.ink }}
+            onPress={handleSubmit}
+            disabled={isPending || !isFormValid}
+          >
+            {isPending ? (
+              <ActivityIndicator color={colors.gold} />
+            ) : (
+              <Text className="text-base font-semibold" style={{ color: colors.goldSoft }}>
+                Reset Password
+              </Text>
+            )}
+          </Pressable>
         </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      )}
+    </AuthShell>
   );
-}
-
-function useLocalSearchParams() {
-  const { useLocalSearchParams } = require("expo-router");
-  return useLocalSearchParams();
 }

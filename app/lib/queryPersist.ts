@@ -21,7 +21,7 @@ const setupQueryPersistence = async () => {
       getItem: async (key: string) => {
         try {
           return await AsyncStorage.getItem(key);
-        } catch (e) {
+        } catch {
           // If a row is corrupted or too big (Android CursorWindow limit), clear it
           await AsyncStorage.removeItem(key).catch(() => {});
           return null;
@@ -30,7 +30,7 @@ const setupQueryPersistence = async () => {
       setItem: async (key: string, value: string) => {
         try {
           await AsyncStorage.setItem(key, value);
-        } catch (e) {
+        } catch {
           // Ignore write limits
         }
       },

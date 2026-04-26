@@ -1,8 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
+import { useRouter } from "expo-router";
 import React from "react";
-import { Pressable, Text, View, ActivityIndicator, ScrollView } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, Text, View, Linking } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useDashboardStats } from "../shared/api/dashboard.query";
 
@@ -57,6 +57,20 @@ export default function DashboardScreen() {
       </View>
 
       <ScrollView className="px-6 mt-4 flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+        <Pressable 
+          className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 mb-6 flex-row items-center active:bg-yellow-100"
+          onPress={() => Linking.openURL("https://printloom.in")}
+        >
+          <View className="bg-yellow-200 w-10 h-10 rounded-full items-center justify-center mr-3">
+            <Ionicons name="globe-outline" size={20} color="#CA8A04" />
+          </View>
+          <View className="flex-1">
+             <Text className="text-yellow-800 font-bold text-sm">Visit PrintLoom on Web</Text>
+             <Text className="text-yellow-600 text-xs mt-0.5">For a better & complete experience</Text>
+          </View>
+          <Ionicons name="open-outline" size={16} color="#CA8A04" />
+        </Pressable>
+
         <Text className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 ml-1">
           Quick Actions
         </Text>

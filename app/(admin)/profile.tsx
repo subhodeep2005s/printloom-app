@@ -1,16 +1,19 @@
-import { useLogout, useMe } from "@/app/shared/api/auth.query";
+import { useLogout, useMe, useResendOtp, useResetPassword } from "@/app/shared/api/auth.query";
 import { useToast } from "@/app/shared/components/Toast";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  Text,
-  View,
+    ActivityIndicator,
+    Linking,
+    Modal,
+    Pressable,
+    RefreshControl,
+    ScrollView,
+    Text,
+    TextInput,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -31,6 +34,7 @@ export default function ProfileScreen() {
   const toast = useToast();
   const [refreshing, setRefreshing] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   const onRefresh = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -69,6 +73,7 @@ export default function ProfileScreen() {
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 120 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#EAB308" />
         }
@@ -153,22 +158,41 @@ export default function ProfileScreen() {
         {/* Divider */}
         <View className="h-px bg-gray-100 mx-6 mt-6" />
 
+        {/* Promo Banner */}
+        <View className="px-6 mt-6 mb-2">
+          <Pressable 
+            className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 flex-row items-center active:bg-yellow-100"
+            onPress={() => Linking.openURL("https://printloom.in")}
+          >
+            <View className="bg-yellow-200 w-10 h-10 rounded-full items-center justify-center mr-3">
+              <Ionicons name="globe-outline" size={20} color="#CA8A04" />
+            </View>
+            <View className="flex-1">
+               <Text className="text-yellow-800 font-bold text-sm">Visit PrintLoom.in</Text>
+               <Text className="text-yellow-600 text-xs mt-0.5">For a better & complete experience</Text>
+            </View>
+            <Ionicons name="open-outline" size={16} color="#CA8A04" />
+          </Pressable>
+        </View>
+
         {/* Menu Items */}
-        <View className="px-6 mt-4">
-          <MenuItem
-            icon="settings-outline"
-            label="Settings"
-            onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
-          />
+        <View className="px-6 mt-2">
+
           <MenuItem
             icon="lock-closed-outline"
             label="Change Password"
-            onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setShowPasswordModal(true);
+            }}
           />
           <MenuItem
             icon="help-circle-outline"
             label="Help & Support"
-            onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              Linking.openURL("mailto:printloomofficial@gmail.com");
+            }}
           />
         </View>
 
@@ -176,7 +200,7 @@ export default function ProfileScreen() {
         <View className="h-px bg-gray-100 mx-6 mt-2" />
 
         {/* Logout */}
-        <View className="px-6 mt-2 mb-10">
+        <View className="px-6 mt-2">
           <Pressable
             className="flex-row items-center py-4 active:opacity-60"
             onPress={handleLogout}
@@ -195,6 +219,13 @@ export default function ProfileScreen() {
           </Pressable>
         </View>
       </ScrollView>
+
+      {showPasswordModal && user?.email && (
+        <ChangePasswordModal
+          email={user.email}
+          onClose={() => setShowPasswordModal(false)}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -245,5 +276,159 @@ function MenuItem({
       <Text className="text-black font-medium text-base ml-3 flex-1">{label}</Text>
       <Ionicons name="chevron-forward" size={18} color="#D1D5DB" />
     </Pressable>
+  );
+}
+
+// ─── Change Password Modal ───────────────────────────────────
+
+function ChangePasswordModal({ email, onClose }: { email: string; onClose: () => void }) {
+  const [step, setStep] = useState<"req" | "verify">("req");
+  const [otp, setOtp] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const toast = useToast();
+  const { mutate: resendOtp, isPending: sending } = useResendOtp();
+  const { mutate: resetPassword, isPending: resetting } = useResetPassword();
+
+  const handleSendOtp = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    resendOtp(
+      { email },
+      {
+        onSuccess: () => {
+          toast.show({ type: "success", title: "OTP Sent", message: "Check your email for the reset code." });
+          setStep("verify");
+        },
+        onError: (err: any) => {
+          toast.show({
+            type: "error",
+            title: "Error",
+            message: err?.response?.data?.message || "Failed to send OTP",
+          });
+        },
+      }
+    );
+  };
+
+  const handleReset = () => {
+    if (!otp) {
+      toast.show({ type: "error", title: "Error", message: "Please enter OTP" });
+      return;
+    }
+    if (password !== confirmPassword) {
+      toast.show({ type: "error", title: "Error", message: "Passwords do not match" });
+      return;
+    }
+    if (password.length < 6) {
+      toast.show({ type: "error", title: "Error", message: "Password must be at least 6 characters" });
+      return;
+    }
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    resetPassword(
+      { email, otp, password },
+      {
+        onSuccess: () => {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          toast.show({ type: "success", title: "Success", message: "Password changed successfully" });
+          onClose();
+        },
+        onError: (err: any) => {
+          toast.show({
+            type: "error",
+            title: "Error",
+            message: err?.response?.data?.message || "Failed to reset password",
+          });
+        },
+      }
+    );
+  };
+
+  return (
+    <Modal visible transparent animationType="fade">
+      <View className="flex-1 bg-black/40 justify-center items-center px-4">
+        <View className="bg-white rounded-3xl p-6 w-full max-w-sm">
+          <View className="w-12 h-12 bg-yellow-100 rounded-full items-center justify-center mb-4">
+            <Ionicons name="lock-closed" size={24} color="#CA8A04" />
+          </View>
+          <Text className="text-xl font-bold text-black mb-2">Change Password</Text>
+          <Text className="text-gray-500 text-sm mb-6">
+            {step === "req"
+              ? `We will send a reset code to ${email}.`
+              : "Enter the code we sent to your email and your new password."}
+          </Text>
+
+          {step === "req" ? (
+            <View>
+              <Pressable
+                className={`rounded-2xl py-3.5 mb-3 items-center ${sending ? "bg-gray-800" : "bg-black"}`}
+                onPress={handleSendOtp}
+                disabled={sending}
+              >
+                {sending ? (
+                  <ActivityIndicator color="#EAB308" />
+                ) : (
+                  <Text className="text-yellow-400 font-bold text-base">Send Code</Text>
+                )}
+              </Pressable>
+              <Pressable
+                className="py-3 items-center"
+                onPress={onClose}
+                disabled={sending}
+              >
+                <Text className="text-gray-500 font-medium">Cancel</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <View>
+              <TextInput
+                className="border border-gray-200 rounded-xl px-4 py-3 text-black mb-3 text-center tracking-widest text-lg font-mono"
+                placeholder="000000"
+                placeholderTextColor="#9CA3AF"
+                value={otp}
+                onChangeText={setOtp}
+                keyboardType="number-pad"
+                maxLength={6}
+              />
+              <TextInput
+                className="border border-gray-200 rounded-xl px-4 py-3 text-black mb-3"
+                placeholder="New Password"
+                placeholderTextColor="#9CA3AF"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+              />
+              <TextInput
+                className="border border-gray-200 rounded-xl px-4 py-3 text-black mb-5"
+                placeholder="Confirm password"
+                placeholderTextColor="#9CA3AF"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry
+              />
+              <Pressable
+                className={`rounded-2xl py-3.5 mb-3 items-center ${resetting ? "bg-gray-800" : "bg-black"}`}
+                onPress={handleReset}
+                disabled={resetting}
+              >
+                {resetting ? (
+                  <ActivityIndicator color="#EAB308" />
+                ) : (
+                  <Text className="text-yellow-400 font-bold text-base">Reset Password</Text>
+                )}
+              </Pressable>
+              <Pressable
+                className="py-3 items-center"
+                onPress={onClose}
+                disabled={resetting}
+              >
+                <Text className="text-gray-500 font-medium">Cancel</Text>
+              </Pressable>
+            </View>
+          )}
+        </View>
+      </View>
+    </Modal>
   );
 }

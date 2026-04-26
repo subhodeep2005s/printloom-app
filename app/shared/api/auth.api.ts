@@ -34,13 +34,6 @@ export const registerApi = async (data: RegisterPayload) => {
 };
 
 export const verifyOtpApi = async (data: VerifyOtpPayload) => {
-  if (__DEV__) {
-    console.log("📤 [verifyOtp] Request payload:", {
-      email: data.email,
-      otp: data.otp,
-      otpLength: data.otp?.length,
-    });
-  }
   const res = await axiosInstance.post<VerifyOtpResponse>(
     "/auth/verify-otp",
     data
@@ -58,7 +51,7 @@ export const forgotPasswordApi = async (data: ForgotPasswordPayload) => {
 
 export const resetPasswordApi = async (data: ResetPasswordPayload) => {
   const res = await axiosInstance.post<ApiResponse>(
-    "/auth/school/reset-password",
+    "/auth/reset-password",
     data
   );
   return res.data;

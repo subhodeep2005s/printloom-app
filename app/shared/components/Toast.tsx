@@ -4,7 +4,6 @@ import React, {
   useState,
   useCallback,
   useRef,
-  useEffect,
 } from "react";
 import { Animated, Text, View, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
