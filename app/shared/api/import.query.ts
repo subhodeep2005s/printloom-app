@@ -4,6 +4,8 @@ import {
   listImportJobsApi,
   uploadImagesZipMultipart,
   uploadImportApi,
+  renameImportJobApi,
+  deleteImportJobApi,
 } from "./import.api";
 
 /**
@@ -85,6 +87,27 @@ export const useImportJob = (id: string | null) => {
         return 3000;
       }
       return false;
+    },
+  });
+};
+
+export const useRenameImportJob = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) =>
+      renameImportJobApi(id, name),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["importJobs"] });
+    },
+  });
+};
+
+export const useDeleteImportJob = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteImportJobApi(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["importJobs"] });
     },
   });
 };

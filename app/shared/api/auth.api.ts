@@ -8,9 +8,6 @@ import {
   RegisterPayload,
   RegisterResponse,
   ResetPasswordPayload,
-  ResendOtpPayload,
-  VerifyOtpPayload,
-  VerifyOtpResponse,
   OrganizationDto,
   UpdateOrganizationPayload,
 } from "../types/auth/types";
@@ -25,24 +22,14 @@ export const getMeApi = async () => {
   return res.data;
 };
 
-export const registerApi = async (data: RegisterPayload) => {
-  const res = await axiosInstance.post<RegisterResponse>(
-    "/auth/register",
-    data
-  );
+export const deleteMeApi = async () => {
+  const res = await axiosInstance.delete<ApiResponse>("/auth/me");
   return res.data;
 };
 
-export const verifyOtpApi = async (data: VerifyOtpPayload) => {
-  if (__DEV__) {
-    console.log("📤 [verifyOtp] Request payload:", {
-      email: data.email,
-      otp: data.otp,
-      otpLength: data.otp?.length,
-    });
-  }
-  const res = await axiosInstance.post<VerifyOtpResponse>(
-    "/auth/verify-otp",
+export const registerApi = async (data: RegisterPayload) => {
+  const res = await axiosInstance.post<RegisterResponse>(
+    "/auth/register",
     data
   );
   return res.data;
@@ -61,11 +48,6 @@ export const resetPasswordApi = async (data: ResetPasswordPayload) => {
     "/auth/school/reset-password",
     data
   );
-  return res.data;
-};
-
-export const resendOtpApi = async (data: ResendOtpPayload) => {
-  const res = await axiosInstance.post<ApiResponse>("/auth/resend-otp", data);
   return res.data;
 };
 

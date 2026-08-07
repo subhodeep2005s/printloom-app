@@ -54,19 +54,6 @@ export interface RegisterResponse {
   };
 }
 
-export interface VerifyOtpPayload {
-  email: string;
-  otp: string;
-}
-
-export interface VerifyOtpResponse {
-  success: boolean;
-  message: string;
-  data: {
-    id: string;
-  };
-}
-
 export interface ForgotPasswordPayload {
   email: string;
 }
@@ -75,10 +62,6 @@ export interface ResetPasswordPayload {
   email: string;
   otp: string;
   password: string;
-}
-
-export interface ResendOtpPayload {
-  email: string;
 }
 
 export interface ApiResponse<T = any> {

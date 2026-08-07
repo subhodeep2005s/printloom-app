@@ -9,6 +9,7 @@ export type ImportJobStatus =
 export interface ImportJobDto {
   id: string;
   orgId: string;
+  name: string | null;
   status: ImportJobStatus;
   filePath: string | null;
   imagesZipPath?: string | null;

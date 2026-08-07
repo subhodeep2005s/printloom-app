@@ -229,3 +229,18 @@ export const getImportJobApi = async (
   );
   return res.data;
 };
+
+export const renameImportJobApi = async (
+  id: string,
+  name: string
+): Promise<{ success: true; data: { id: string; name: string } }> => {
+  const res = await axiosInstance.patch(`/import/jobs/${id}/rename`, { name });
+  return res.data;
+};
+
+export const deleteImportJobApi = async (
+  id: string
+): Promise<{ success: true; data: { id: string } }> => {
+  const res = await axiosInstance.delete(`/import/jobs/${id}`);
+  return res.data;
+};

@@ -208,6 +208,25 @@ function OrgEditModal({
           </View>
 
           <ScrollView className="px-6 py-4 flex-1">
+            {/* Read-only info */}
+            <View className="bg-gray-50 rounded-2xl px-4 py-3 mb-4 border border-gray-100">
+              <Text className="text-xs text-gray-400 font-medium mb-1">Organization ID</Text>
+              <Text className="text-xs text-gray-600 font-mono" selectable>{org.id}</Text>
+            </View>
+
+            {org.created_at && (
+              <View className="bg-gray-50 rounded-2xl px-4 py-3 mb-4 border border-gray-100">
+                <Text className="text-xs text-gray-400 font-medium mb-1">Registered On</Text>
+                <Text className="text-sm text-gray-700">
+                  {new Date(org.created_at).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </Text>
+              </View>
+            )}
+
             <View className="mb-4">
               <Text className="text-xs text-gray-400 font-medium mb-2 ml-1">Name</Text>
               <TextInput

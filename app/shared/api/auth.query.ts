@@ -1,13 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as SecureStore from "expo-secure-store";
 import {
+  deleteMeApi,
   forgotPasswordApi,
   getMeApi,
   loginApi,
   registerApi,
-  resendOtpApi,
   resetPasswordApi,
-  verifyOtpApi,
   getOrganizationsApi,
   updateOrganizationApi,
   deleteOrganizationApi,
@@ -17,8 +16,6 @@ import {
   LoginPayload,
   RegisterPayload,
   ResetPasswordPayload,
-  ResendOtpPayload,
-  VerifyOtpPayload,
   UpdateOrganizationPayload,
 } from "../types/auth/types";
 import { clearOrgId } from "@/app/lib/orgStore";
@@ -48,12 +45,6 @@ export const useRegister = () => {
   });
 };
 
-export const useVerifyOtp = () => {
-  return useMutation({
-    mutationFn: (data: VerifyOtpPayload) => verifyOtpApi(data),
-  });
-};
-
 export const useForgotPassword = () => {
   return useMutation({
     mutationFn: (data: ForgotPasswordPayload) => forgotPasswordApi(data),
@@ -66,12 +57,6 @@ export const useResetPassword = () => {
   });
 };
 
-export const useResendOtp = () => {
-  return useMutation({
-    mutationFn: (data: ResendOtpPayload) => resendOtpApi(data),
-  });
-};
-
 export const useLogout = () => {
   const queryClient = useQueryClient();
 
@@ -80,6 +65,12 @@ export const useLogout = () => {
     await clearOrgId();
     queryClient.clear();
   };
+};
+
+export const useDeleteMe = () => {
+  return useMutation({
+    mutationFn: () => deleteMeApi(),
+  });
 };
 
 export const useOrganizations = () => {

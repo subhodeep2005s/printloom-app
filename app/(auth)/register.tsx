@@ -85,12 +85,9 @@ export default function RegisterScreen() {
         toast.show({
           type: "success",
           title: "Account Created!",
-          message: "Please verify your email with OTP",
+          message: "You can now sign in with your credentials",
         });
-        router.replace({
-          pathname: "/otp",
-          params: { email: form.email },
-        });
+        router.replace("/login");
       },
     });
   };

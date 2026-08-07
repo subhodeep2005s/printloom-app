@@ -1,5 +1,6 @@
-import { useImportJobs, useUploadImport } from "@/app/shared/api/import.query";
+import { useImportJobs, useUploadImport, useRenameImportJob, useDeleteImportJob } from "@/app/shared/api/import.query";
 import { useOrganizations } from "@/app/shared/api/auth.query";
+import { AlertDialog } from "@/app/shared/components/AlertDialog";
 import { useToast } from "@/app/shared/components/Toast";
 import { ImportJobDto, ImportJobStatus } from "@/app/shared/types/import/types";
 import { OrganizationDto } from "@/app/shared/types/auth/types";
@@ -14,6 +15,7 @@ import {
   RefreshControl,
   ScrollView,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -372,7 +374,7 @@ export default function AdminImportScreen() {
             <View className="pb-8">
               {jobs.map((job, index) => (
                 <View key={job.id} style={index > 0 ? { marginTop: 12 } : undefined}>
-                  <JobCard job={job} />
+                  <JobCard job={job} onRefresh={refetch} />
                 </View>
               ))}
             </View>
@@ -438,67 +440,219 @@ function FileCard({
   );
 }
 
-function JobCard({ job }: { job: ImportJobDto }) {
+function JobCard({ job, onRefresh }: { job: ImportJobDto; onRefresh: () => void }) {
   const config = STATUS_CONFIG[job.status];
   const progress =
     job.totalRows > 0 ? Math.round((job.processedRows / job.totalRows) * 100) : 0;
 
+  const [showActions, setShowActions] = useState(false);
+  const [showRename, setShowRename] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [newName, setNewName] = useState(job.name ?? "");
+
+  const toast = useToast();
+  const { mutate: renameJob, isPending: isRenaming } = useRenameImportJob();
+  const { mutate: deleteJob, isPending: isDeleting } = useDeleteImportJob();
+
+  const displayName = job.name ?? `Import ${job.id.slice(0, 8)}`;
+
+  const handleRename = () => {
+    if (!newName.trim()) return;
+    renameJob(
+      { id: job.id, name: newName.trim() },
+      {
+        onSuccess: () => {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          toast.show({ type: "success", title: "Renamed", message: "Import job renamed" });
+          setShowRename(false);
+          setShowActions(false);
+          onRefresh();
+        },
+        onError: (err: any) => {
+          toast.show({ type: "error", title: "Error", message: err?.response?.data?.message || "Failed to rename" });
+        },
+      }
+    );
+  };
+
+  const handleDelete = () => {
+    deleteJob(job.id, {
+      onSuccess: () => {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        toast.show({ type: "success", title: "Deleted", message: "Import job deleted" });
+        setShowDeleteDialog(false);
+        setShowActions(false);
+        onRefresh();
+      },
+      onError: (err: any) => {
+        toast.show({ type: "error", title: "Error", message: err?.response?.data?.message || "Failed to delete" });
+      },
+    });
+  };
+
   return (
-    <Pressable
-      className="bg-gray-50 rounded-2xl p-4 active:bg-gray-100 border border-gray-100"
-      onPress={() => Haptics.selectionAsync()}
-    >
-      <View className="flex-row items-center justify-between">
-        <View className="flex-row items-center flex-1">
-          <View
-            style={{ backgroundColor: config.bg }}
-            className="w-10 h-10 rounded-xl items-center justify-center"
-          >
-            <Ionicons name={config.icon} size={20} color={config.color} />
-          </View>
-          <View className="ml-3 flex-1">
-            <Text className="text-black font-semibold text-sm" numberOfLines={1}>
-              {job.id.slice(0, 8)}...
-            </Text>
-            <Text className="text-gray-400 text-xs mt-0.5">{timeAgo(job.createdAt)}</Text>
-          </View>
-        </View>
-
-        <View style={{ backgroundColor: config.bg }} className="rounded-full px-3 py-1">
-          <Text style={{ color: config.color }} className="text-xs font-semibold">
-            {config.label}
-          </Text>
-        </View>
-      </View>
-
-      {(job.status === "processing" || job.status === "completed") && job.totalRows > 0 && (
-        <View className="mt-3">
-          <View className="flex-row items-center justify-between mb-1.5">
-            <Text className="text-xs text-gray-400">
-              {job.processedRows} / {job.totalRows} rows
-            </Text>
-            <Text className="text-xs font-semibold text-black">{progress}%</Text>
-          </View>
-          <View className="h-2 bg-gray-200 rounded-full overflow-hidden">
+    <>
+      <Pressable
+        className="bg-gray-50 rounded-2xl p-4 active:bg-gray-100 border border-gray-100"
+        onPress={() => Haptics.selectionAsync()}
+        onLongPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          setShowActions(true);
+        }}
+      >
+        <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center flex-1">
             <View
-              className="h-full rounded-full"
-              style={{
-                width: `${progress}%`,
-                backgroundColor: job.status === "completed" ? "#22C55E" : "#EAB308",
+              style={{ backgroundColor: config.bg }}
+              className="w-10 h-10 rounded-xl items-center justify-center"
+            >
+              <Ionicons name={config.icon} size={20} color={config.color} />
+            </View>
+            <View className="ml-3 flex-1">
+              <Text className="text-black font-semibold text-sm" numberOfLines={1}>
+                {displayName}
+              </Text>
+              <Text className="text-gray-400 text-xs mt-0.5">{timeAgo(job.createdAt)}</Text>
+            </View>
+          </View>
+
+          <View className="flex-row items-center gap-2">
+            <View style={{ backgroundColor: config.bg }} className="rounded-full px-3 py-1">
+              <Text style={{ color: config.color }} className="text-xs font-semibold">
+                {config.label}
+              </Text>
+            </View>
+            <Pressable
+              className="w-8 h-8 items-center justify-center rounded-lg active:bg-gray-200"
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setShowActions(true);
               }}
-            />
+            >
+              <Ionicons name="ellipsis-vertical" size={16} color="#9CA3AF" />
+            </Pressable>
           </View>
         </View>
-      )}
 
-      {job.status === "failed" && job.errorMessage && (
-        <View className="mt-3 bg-red-50 rounded-lg px-3 py-2 border border-red-100">
-          <Text className="text-red-600 text-xs font-medium" numberOfLines={2}>
-            {job.errorMessage}
-          </Text>
+        {(job.status === "processing" || job.status === "completed") && job.totalRows > 0 && (
+          <View className="mt-3">
+            <View className="flex-row items-center justify-between mb-1.5">
+              <Text className="text-xs text-gray-400">
+                {job.processedRows} / {job.totalRows} rows
+              </Text>
+              <Text className="text-xs font-semibold text-black">{progress}%</Text>
+            </View>
+            <View className="h-2 bg-gray-200 rounded-full overflow-hidden">
+              <View
+                className="h-full rounded-full"
+                style={{
+                  width: `${progress}%`,
+                  backgroundColor: job.status === "completed" ? "#22C55E" : "#EAB308",
+                }}
+              />
+            </View>
+          </View>
+        )}
+
+        {job.status === "failed" && job.errorMessage && (
+          <View className="mt-3 bg-red-50 rounded-lg px-3 py-2 border border-red-100">
+            <Text className="text-red-600 text-xs font-medium" numberOfLines={2}>
+              {job.errorMessage}
+            </Text>
+          </View>
+        )}
+
+        <Text className="text-gray-300 text-xs mt-2 ml-0.5">Long press for options</Text>
+      </Pressable>
+
+      {/* Actions bottom sheet */}
+      <Modal visible={showActions} transparent animationType="slide">
+        <Pressable className="flex-1 bg-black/40 justify-end" onPress={() => setShowActions(false)}>
+          <View className="bg-white rounded-t-3xl pb-8 px-6">
+            <View className="items-center pt-3 pb-4">
+              <View className="w-10 h-1 bg-gray-300 rounded-full" />
+            </View>
+            <Text className="text-base font-bold text-black mb-4" numberOfLines={1}>
+              {displayName}
+            </Text>
+
+            <Pressable
+              className="flex-row items-center py-4 border-b border-gray-100 active:bg-gray-50 rounded-xl px-2"
+              onPress={() => {
+                setNewName(job.name ?? `Import ${job.id.slice(0, 8)}`);
+                setShowRename(true);
+                setShowActions(false);
+              }}
+            >
+              <Ionicons name="pencil-outline" size={20} color="#000" />
+              <Text className="text-black font-medium text-base ml-3">Rename</Text>
+            </Pressable>
+
+            <Pressable
+              className="flex-row items-center py-4 active:bg-red-50 rounded-xl px-2"
+              onPress={() => {
+                setShowActions(false);
+                // slight delay so the bottom sheet closes before dialog opens
+                setTimeout(() => setShowDeleteDialog(true), 300);
+              }}
+            >
+              <Ionicons name="trash-outline" size={20} color="#EF4444" />
+              <Text className="text-red-500 font-medium text-base ml-3">Delete</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* Rename modal */}
+      <Modal visible={showRename} transparent animationType="fade">
+        <View className="flex-1 bg-black/40 justify-center px-6">
+          <View className="bg-white rounded-2xl p-6">
+            <Text className="text-lg font-bold text-black mb-4">Rename Import</Text>
+            <TextInput
+              className="border border-gray-200 rounded-xl px-4 py-3 text-black text-base mb-4"
+              value={newName}
+              onChangeText={setNewName}
+              placeholder="Enter a name..."
+              placeholderTextColor="#9CA3AF"
+              autoFocus
+              maxLength={100}
+            />
+            <View className="flex-row gap-3">
+              <Pressable
+                className="flex-1 py-3 rounded-xl bg-gray-100 items-center"
+                onPress={() => setShowRename(false)}
+              >
+                <Text className="text-gray-600 font-medium">Cancel</Text>
+              </Pressable>
+              <Pressable
+                className={`flex-1 py-3 rounded-xl items-center ${!newName.trim() || isRenaming ? "bg-gray-300" : "bg-black"}`}
+                onPress={handleRename}
+                disabled={!newName.trim() || isRenaming}
+              >
+                {isRenaming ? (
+                  <ActivityIndicator color="#EAB308" size="small" />
+                ) : (
+                  <Text className="text-yellow-400 font-semibold">Save</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
         </View>
-      )}
-    </Pressable>
+      </Modal>
+
+      {/* Delete confirmation — shadcn-style AlertDialog */}
+      <AlertDialog
+        visible={showDeleteDialog}
+        title="Delete this import?"
+        description={`"${displayName}" will be permanently removed. This action cannot be undone.`}
+        cancelLabel="Cancel"
+        confirmLabel="Delete"
+        confirmDestructive
+        loading={isDeleting}
+        onCancel={() => setShowDeleteDialog(false)}
+        onConfirm={handleDelete}
+      />
+    </>
   );
 }
 
