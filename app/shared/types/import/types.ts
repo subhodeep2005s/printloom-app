@@ -1,5 +1,3 @@
-import { OrganizationType } from "../auth/types";
-
 export type ImportJobStatus =
   | "pending"
   | "processing"

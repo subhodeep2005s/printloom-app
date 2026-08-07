@@ -6,8 +6,3 @@ export interface DashboardStatsDto {
   totalOrganizations?: number;
   activeOrganizations?: number;
 }
-
-export interface DashboardStatsResponse {
-  success: true;
-  data: DashboardStatsDto;
-}

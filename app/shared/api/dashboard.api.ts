@@ -1,15 +1,15 @@
-import axiosInstance from "@/app/lib/axiosInstance";
-import { DashboardStatsResponse } from "../types/dashboard/types";
+import axiosInstance from "../../lib/axiosInstance";
+import { ApiResponse } from "../types/auth/types";
+import { DashboardStatsDto } from "../types/dashboard/types";
 
-export const getDashboardStatsApi = async (
-  orgId?: string
-): Promise<DashboardStatsResponse> => {
-  const query = new URLSearchParams();
-  if (orgId) query.set("orgId", orgId);
-  const suffix = query.toString() ? `?${query.toString()}` : "";
-
-  const res = await axiosInstance.get<DashboardStatsResponse>(
-    `/dashboard/stats${suffix}`
+export const fetchDashboardStats = async (): Promise<DashboardStatsDto> => {
+  const { data } = await axiosInstance.get<ApiResponse<DashboardStatsDto>>("/dashboard/stats");
+  return (
+    data.data ?? {
+      totalDatasets: 0,
+      totalRecords: 0,
+      totalImports: 0,
+      runningImports: 0,
+    }
   );
-  return res.data;
 };

@@ -1,12 +1,9 @@
 import axiosInstance from "@/app/lib/axiosInstance";
-import * as SecureStore from "expo-secure-store";
 import {
   GetImportJobResponse,
   ListImportJobsResponse,
   UploadImportResponse,
 } from "../types/import/types";
-
-const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL;
 
 // ─── Excel Upload ────────────────────────────────────────────
 

@@ -1,0 +1,73 @@
+PRINTLOOM PROJECT SUMMARY FOR PRIVACY POLICY & TERMS AND CONDITIONS
+================================================================
+
+1. PROJECT OVERVIEW
+-------------------
+Project Name: PrintLoom
+App Name: printloom-app
+Package Name: com.subhodeep2005s.printloomapp
+Platform: Cross-platform Mobile (Android & iOS) and Web
+Framework: React Native / Expo
+
+2. BUSINESS DESCRIPTION
+-----------------------
+PrintLoom is a management and data processing platform designed for various types of organizations including Schools, Colleges, Universities, Coaching Centers, NGOs, Government entities, and Private Companies. The app facilitates the management of dynamic datasets (e.g., student records, employee lists) and is intended for administrative use to organize and potentially process data for printing or record-keeping purposes.
+
+3. DATA COLLECTION & PERSONAL INFORMATION
+-----------------------------------------
+The application collects and processes the following types of data:
+
+A. User Authentication Data:
+   - Full Name
+   - Email Address
+   - Password (encrypted/hashed on the backend)
+   - OTP (One-Time Password) for email verification
+
+B. Organization Data:
+   - Organization Name
+   - Organization Type (e.g., School, Company, etc.)
+   - Organization ID (assigned upon registration)
+
+C. Dynamic Record Data (Uploaded by Users):
+   - Users create "Datasets" (e.g., "Student List 2024").
+   - Within these datasets, users upload and manage records which may include:
+     - Identification details (names, roll numbers, IDs)
+     - Photos/Images (profile pictures, logos)
+     - Barcodes and QR Codes
+     - Any other custom text fields defined by the administrator
+
+D. Device & Technical Data:
+   - Authentication tokens (stored securely on-device via Expo SecureStore)
+   - Cached application data (stored via AsyncStorage)
+   - App version and platform info (Android/iOS)
+
+4. USE OF DATA
+--------------
+- To provide and maintain the service (authentication and dashboard access).
+- To manage and display user-uploaded datasets.
+- To facilitate file imports (e.g., Excel/CSV) and data sharing.
+- To send security-related notifications (OTP, password reset).
+
+5. THIRD-PARTY SERVICES & INTEGRATIONS
+--------------------------------------
+- Backend API: Communicates with a remote server (via EXPO_PUBLIC_API_BASE_URL) to store and sync data.
+- Expo / EAS: Used for application updates, builds, and potentially push notifications.
+- Haptics/Native APIs: Used to enhance user experience on the device.
+
+6. SECURITY MEASURES
+--------------------
+- Secure Communication: All data transmission is handled via HTTPS (TLS).
+- Authentication: Multi-factor verification via email-based OTP.
+- Local Security: Sensitive tokens are stored in the device's hardware-backed secure keychain.
+
+7. USER RESPONSIBILITY (TERMS & CONDITIONS)
+-------------------------------------------
+- Data Ownership: Users (Organizations) maintain ownership of the data they upload.
+- Privacy Compliance: Users are responsible for ensuring they have the right/consent to upload the personal data of their subjects (students, employees, etc.) into the PrintLoom platform.
+- Account Security: Users are responsible for maintaining the confidentiality of their login credentials.
+
+8. KEY FEATURES FOR REGULATORY COMPLIANCE
+-----------------------------------------
+- Data Deletion: Users can delete individual records or entire datasets.
+- Profile Management: Users can update their representative information.
+- Data Portability: Features exist for sharing and importing records.

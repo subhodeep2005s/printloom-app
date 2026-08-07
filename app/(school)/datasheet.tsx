@@ -1,14 +1,16 @@
+import { getOrgId } from "@/app/lib/orgStore";
 import {
   useDatasets,
-  useRecords,
   useDeleteRecord,
+  useRecords,
   useUpdateRecord,
+  useUploadImage,
 } from "@/app/shared/api/dataset.query";
 import { useToast } from "@/app/shared/components/Toast";
 import { DatasetDto, DynamicRecordDto } from "@/app/shared/types/dataset/types";
-import { getOrgId } from "@/app/lib/orgStore";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -64,7 +66,7 @@ export default function DatasheetScreen() {
   }, []);
 
   const { data: datasetsData, isLoading: datasetsLoading } = useDatasets(orgId);
-  const datasets = datasetsData?.items ?? [];
+  const datasets = useMemo(() => datasetsData?.items ?? [], [datasetsData]);
 
   useEffect(() => {
     if (!selectedDatasetId && datasets.length > 0) {
@@ -80,7 +82,10 @@ export default function DatasheetScreen() {
   );
 
   const records = recordsData?.items ?? [];
-  const headers = recordsData?.headers ?? currentDataset?.headers ?? [];
+  const headers = useMemo(
+    () => recordsData?.headers ?? currentDataset?.headers ?? [],
+    [currentDataset?.headers, recordsData?.headers]
+  );
   const total = recordsData?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
@@ -481,8 +486,10 @@ function RecordProfileModal({
 }) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Record<string, string>>({});
+  const [localPhotoUri, setLocalPhotoUri] = useState<string | null>(null);
   const toast = useToast();
   const { mutate: updateRecord, isPending: saving } = useUpdateRecord();
+  const { mutate: uploadImage, isPending: uploading } = useUploadImage();
 
   useEffect(() => {
     if (editing) {
@@ -491,8 +498,56 @@ function RecordProfileModal({
         initial[h] = String(record.data[h] ?? "");
       }
       setForm(initial);
+      setLocalPhotoUri(null);
     }
   }, [editing, headers, record]);
+
+  // Find the image field header name
+  const photoHeader = headers.find((h) => isImageField(h)) ?? null;
+
+  const pickPhoto = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      toast.show({ type: "error", title: "Permission Denied", message: "Camera roll access is required" });
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      const uri = result.assets[0].uri;
+      setLocalPhotoUri(uri);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+      // Step 1: Upload image to /datasets/upload-image → get S3 key
+      uploadImage(
+        { photoUri: uri, orgId: orgId || undefined },
+        {
+          onSuccess: (res) => {
+            const imageKey = res.data.key;
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            toast.show({ type: "success", title: "Photo Uploaded", message: "Photo will be saved with record" });
+
+            // Step 2: Set the image key in the form so it's included in PATCH
+            if (photoHeader) {
+              setForm((prev) => ({ ...prev, [photoHeader]: imageKey }));
+            }
+          },
+          onError: (err: any) => {
+            setLocalPhotoUri(null);
+            toast.show({
+              type: "error",
+              title: "Upload Failed",
+              message: err?.response?.data?.message || "Failed to upload photo",
+            });
+          },
+        }
+      );
+    }
+  };
 
   const handleSave = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
@@ -516,7 +571,6 @@ function RecordProfileModal({
     );
   };
 
-  const photoHeader = headers.find((h) => isImageField(h)) ?? null;
   const photoValue = photoHeader ? String(record.data[photoHeader] ?? "").trim() : "";
   const photoUrl = record.photoUrl ?? (photoValue && isImageUrl(photoValue) ? photoValue : null);
 
@@ -564,26 +618,48 @@ function RecordProfileModal({
           <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
             {/* Profile Header */}
             <View className="items-center pt-4 pb-6">
-              <View
-                className="w-24 h-24 rounded-full bg-yellow-400 items-center justify-center overflow-hidden"
-                style={{
-                  shadowColor: "#EAB308",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.25,
-                  shadowRadius: 12,
-                  elevation: 8,
-                }}
+              <Pressable
+                onPress={editing ? pickPhoto : undefined}
+                disabled={!editing || uploading}
+                className="relative"
               >
-                {photoUrl ? (
-                  <Image source={{ uri: photoUrl }} className="w-24 h-24" resizeMode="cover" />
-                ) : (
-                  <Text className="text-black text-3xl font-bold">
-                    {displayName.charAt(0).toUpperCase()}
-                  </Text>
+                <View
+                  className="w-24 h-24 rounded-full bg-yellow-400 items-center justify-center overflow-hidden"
+                  style={{
+                    shadowColor: "#EAB308",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.25,
+                    shadowRadius: 12,
+                    elevation: 8,
+                  }}
+                >
+                  {uploading ? (
+                    <ActivityIndicator color="#000" size="large" />
+                  ) : localPhotoUri ? (
+                    <Image source={{ uri: localPhotoUri }} className="w-24 h-24" resizeMode="cover" />
+                  ) : photoUrl ? (
+                    <Image source={{ uri: photoUrl }} className="w-24 h-24" resizeMode="cover" />
+                  ) : (
+                    <Text className="text-black text-3xl font-bold">
+                      {displayName.charAt(0).toUpperCase()}
+                    </Text>
+                  )}
+                </View>
+                {editing && (
+                  <View className="absolute bottom-0 right-0 w-8 h-8 bg-black rounded-full items-center justify-center border-2 border-white">
+                    <Ionicons name="camera" size={14} color="#EAB308" />
+                  </View>
                 )}
-              </View>
+              </Pressable>
               <Text className="text-xl font-bold text-black mt-4">{displayName || "—"}</Text>
-              {subValue ? (
+              {editing && (
+                <Pressable onPress={pickPhoto} disabled={uploading}>
+                  <Text className="text-yellow-600 text-xs font-semibold mt-1">
+                    {uploading ? "Uploading..." : "Tap to change photo"}
+                  </Text>
+                </Pressable>
+              )}
+              {!editing && subValue ? (
                 <Text className="text-gray-400 text-sm mt-1">{subValue}</Text>
               ) : null}
               <View className="bg-gray-200 rounded-full px-3 py-0.5 mt-2">
@@ -606,6 +682,49 @@ function RecordProfileModal({
                       : null;
 
                 if (editing) {
+                  if (isImage) {
+                    // Show upload button for image fields instead of text input
+                    const currentImgUrl = localPhotoUri || imgUrl;
+                    return (
+                      <View key={header} style={index > 0 ? { marginTop: 16 } : undefined}>
+                        <Text className="text-xs text-gray-400 font-medium mb-2 ml-1">
+                          {header}
+                        </Text>
+                        <Pressable
+                          className="border border-dashed border-gray-300 rounded-2xl px-4 py-4 items-center justify-center bg-gray-50 active:bg-gray-100"
+                          onPress={pickPhoto}
+                          disabled={uploading}
+                        >
+                          {currentImgUrl ? (
+                            <View className="flex-row items-center">
+                              <Image
+                                source={{ uri: currentImgUrl }}
+                                className="w-14 h-14 rounded-xl"
+                                resizeMode="cover"
+                              />
+                              <View className="ml-3 flex-1">
+                                <Text className="text-black text-sm font-medium" numberOfLines={1}>
+                                  {uploading ? "Uploading..." : "Photo attached"}
+                                </Text>
+                                <Text className="text-yellow-600 text-xs font-semibold mt-0.5">
+                                  Tap to change
+                                </Text>
+                              </View>
+                              {uploading && <ActivityIndicator color="#EAB308" size="small" />}
+                            </View>
+                          ) : (
+                            <View className="items-center py-2">
+                              <View className="w-12 h-12 bg-yellow-50 rounded-full items-center justify-center mb-2">
+                                <Ionicons name="cloud-upload-outline" size={22} color="#EAB308" />
+                              </View>
+                              <Text className="text-black text-sm font-semibold">Upload Photo</Text>
+                              <Text className="text-gray-400 text-xs mt-0.5">Tap to select from gallery</Text>
+                            </View>
+                          )}
+                        </Pressable>
+                      </View>
+                    );
+                  }
                   return (
                     <View key={header} style={index > 0 ? { marginTop: 16 } : undefined}>
                       <Text className="text-xs text-gray-400 font-medium mb-2 ml-1">

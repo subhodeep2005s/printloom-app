@@ -1,129 +1,94 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import * as Haptics from "expo-haptics";
 import React from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, ScrollView, Text, View, Pressable, Linking } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useMe } from "@/app/shared/api/auth.query";
-import { useDashboardStats } from "@/app/shared/api/dashboard.query";
+import { useDashboardStats } from "../shared/api/dashboard.query";
 
 export default function DashboardScreen() {
-  const router = useRouter();
-  const { data: me } = useMe();
-  const { data: stats, isLoading } = useDashboardStats({
-    role: me?.role,
-    orgId: me?.id ?? null,
-  });
+  const { data: stats, isLoading } = useDashboardStats();
 
   const statItems = [
     {
       label: "Datasets",
       value: stats?.totalDatasets ?? 0,
-      icon: "layers-outline" as const,
-      color: "#2563EB",
+      icon: "server-outline" as const,
+      accent: "#3B82F6",
       bg: "bg-blue-50",
     },
     {
       label: "Records",
       value: stats?.totalRecords ?? 0,
       icon: "people-outline" as const,
-      color: "#059669",
+      accent: "#10B981",
       bg: "bg-emerald-50",
     },
     {
       label: "Imports",
       value: stats?.totalImports ?? 0,
       icon: "cloud-upload-outline" as const,
-      color: "#D97706",
-      bg: "bg-amber-50",
-    },
-    {
-      label: "Running",
-      value: stats?.runningImports ?? 0,
-      icon: "sync-outline" as const,
-      color: "#DC2626",
-      bg: "bg-red-50",
+      accent: "#EAB308",
+      bg: "bg-yellow-50",
+      subtitle: `${stats?.runningImports ?? 0} running`,
     },
   ];
 
   return (
     <SafeAreaView className="flex-1 bg-white">
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }}
-      >
-        <View className="pt-4 pb-1">
-          <Text className="text-2xl font-bold text-black">School Dashboard</Text>
-          <Text className="text-gray-400 text-sm mt-0.5">
-            A quick snapshot of your import and dataset activity.
-          </Text>
-        </View>
-
-        <Text className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 ml-1 mt-4">
-          Stats
+      <View className="px-6 pt-4 pb-4">
+        <Text className="text-2xl font-bold text-black">School Dashboard</Text>
+        <Text className="text-gray-400 text-sm mt-0.5">
+          Overview and recent activity
         </Text>
+      </View>
 
-        <View className="flex-row flex-wrap -mx-1">
-          {statItems.map((item) => (
-            <View key={item.label} className="w-1/2 px-1 mb-2">
-              <View className="bg-gray-50 border border-gray-100 rounded-2xl p-4 min-h-[112px] justify-between">
-                <View
-                  className={`w-10 h-10 rounded-xl items-center justify-center ${item.bg}`}
-                >
-                  <Ionicons name={item.icon} size={20} color={item.color} />
+      <ScrollView className="px-6 mt-4 flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+        <Pressable 
+          className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 mb-6 flex-row items-center active:bg-yellow-100"
+          onPress={() => Linking.openURL("https://printloom.in")}
+        >
+          <View className="bg-yellow-200 w-10 h-10 rounded-full items-center justify-center mr-3">
+            <Ionicons name="globe-outline" size={20} color="#CA8A04" />
+          </View>
+          <View className="flex-1">
+             <Text className="text-yellow-800 font-bold text-sm">Visit PrintLoom on Web</Text>
+             <Text className="text-yellow-600 text-xs mt-0.5">For a better & complete experience</Text>
+          </View>
+          <Ionicons name="open-outline" size={16} color="#CA8A04" />
+        </Pressable>
+
+        <Text className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 ml-1">
+          Dashboard Stats
+        </Text>
+        
+        {isLoading ? (
+          <View className="py-10 items-center justify-center">
+            <ActivityIndicator size="small" color="#9CA3AF" />
+          </View>
+        ) : (
+          <View className="flex-row flex-wrap gap-4">
+            {statItems.map((item, index) => (
+              <View 
+                key={index} 
+                className="w-[47%] bg-white border border-gray-100 rounded-2xl p-4 shadow-sm"
+              >
+                <View className={`w-10 h-10 ${item.bg} rounded-full items-center justify-center mb-3`}>
+                  <Ionicons name={item.icon} size={20} color={item.accent} />
                 </View>
-                <View>
-                  <Text className="text-gray-400 text-xs font-medium">{item.label}</Text>
-                  <Text className="text-black text-2xl font-bold mt-0.5">
-                    {isLoading ? "..." : item.value.toLocaleString()}
+                <Text className="text-gray-500 text-xs font-medium mb-1">{item.label}</Text>
+                <View className="flex-row items-baseline gap-2">
+                  <Text className="text-2xl font-bold text-gray-900">
+                    {item.value.toLocaleString()}
                   </Text>
+                  {item.subtitle && (
+                    <Text className="text-[10px] font-medium text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">
+                      {item.subtitle}
+                    </Text>
+                  )}
                 </View>
               </View>
-            </View>
-          ))}
-        </View>
-
-        <Text className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 ml-1 mt-5">
-          Quick Actions
-        </Text>
-
-        <Pressable
-          className="bg-gray-50 border border-gray-100 rounded-2xl p-4 flex-row items-center active:bg-gray-100"
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            router.push("/(school)/import");
-          }}
-        >
-          <View className="w-12 h-12 bg-yellow-100 rounded-xl items-center justify-center">
-            <Ionicons name="cloud-upload" size={24} color="#EAB308" />
+            ))}
           </View>
-          <View className="flex-1 ml-4">
-            <Text className="text-black font-semibold text-base">Upload Import</Text>
-            <Text className="text-gray-400 text-xs mt-0.5">
-              Upload Excel and images ZIP in one flow
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-        </Pressable>
-
-        <Pressable
-          className="bg-gray-50 border border-gray-100 rounded-2xl p-4 flex-row items-center active:bg-gray-100 mt-3"
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            router.push("/(school)/datasheet");
-          }}
-        >
-          <View className="w-12 h-12 bg-blue-100 rounded-xl items-center justify-center">
-            <Ionicons name="document-text" size={22} color="#2563EB" />
-          </View>
-          <View className="flex-1 ml-4">
-            <Text className="text-black font-semibold text-base">Open Datasheet</Text>
-            <Text className="text-gray-400 text-xs mt-0.5">
-              View and manage your uploaded records
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-        </Pressable>
+        )}
       </ScrollView>
     </SafeAreaView>
   );

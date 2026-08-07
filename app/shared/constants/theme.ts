@@ -1,0 +1,15 @@
+export const colors = {
+  ink: "#111111",
+  inkSoft: "#4B5563",
+  surface: "#FFFDF7",
+  surfaceStrong: "#FFFFFF",
+  border: "#E8E2D6",
+  borderSoft: "#F1ECE2",
+  gold: "#E0B94B",
+  goldDeep: "#B88917",
+  goldSoft: "#F9E7AF",
+  sand: "#F6EFE2",
+  sandDeep: "#E7D8BE",
+  danger: "#DC2626",
+  success: "#166534",
+};

@@ -1,19 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
-import { getDashboardStatsApi } from "./dashboard.api";
+import { fetchDashboardStats } from "./dashboard.api";
+import { DashboardStatsDto } from "../types/dashboard/types";
 
-export const useDashboardStats = (params: {
-  role?: "admin" | "org";
-  orgId: string | null;
-}) => {
-  const scopedOrgId = params.role === "admin" ? undefined : params.orgId || undefined;
+export const DASHBOARD_QUERY_KEYS = {
+  stats: ["dashboard", "stats"] as const,
+};
 
-  return useQuery({
-    queryKey: ["dashboardStats", params.role, scopedOrgId ?? "all"],
-    queryFn: async () => {
-      const res = await getDashboardStatsApi(scopedOrgId);
-      return res.data;
-    },
-    enabled: params.role === "admin" || !!params.orgId,
-    staleTime: 30_000,
+export const useDashboardStats = () => {
+  return useQuery<DashboardStatsDto, Error>({
+    queryKey: DASHBOARD_QUERY_KEYS.stats,
+    queryFn: fetchDashboardStats,
   });
 };

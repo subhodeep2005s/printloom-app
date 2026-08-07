@@ -77,10 +77,11 @@ export const updateRecordApi = async (
   data: Record<string, string>,
   orgId?: string
 ): Promise<SingleRecordResponse> => {
+  const body: { data: Record<string, string>; orgId?: string } = { data };
+  if (orgId) body.orgId = orgId;
   const res = await axiosInstance.patch<SingleRecordResponse>(
     `/datasets/records/${recordId}`,
-    { data },
-    orgId ? { params: { orgId } } : undefined
+    body
   );
   return res.data;
 };
@@ -95,3 +96,50 @@ export const deleteRecordApi = async (
   );
   return res.data;
 };
+
+// ─── Image Upload ────────────────────────────────────────────
+
+export interface UploadImageResponse {
+  success: true;
+  data: {
+    key: string; // e.g. "datasets/orgId/records/timestamp-filename.jpg"
+  };
+}
+
+/**
+ * Upload an image file to /datasets/upload-image.
+ * Returns the S3 key/path which should be stored in the record's image field
+ * via a subsequent PATCH /datasets/records/:id call.
+ */
+export const uploadImageApi = async (
+  photoUri: string,
+  orgId?: string
+): Promise<UploadImageResponse> => {
+  const formData = new FormData();
+
+  // Get the filename and infer MIME type
+  const filename = photoUri.split("/").pop() || "photo.jpg";
+  const ext = filename.split(".").pop()?.toLowerCase() || "jpg";
+  const mimeType =
+    ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
+
+  formData.append("image", {
+    uri: photoUri,
+    name: filename,
+    type: mimeType,
+  } as any);
+
+  if (orgId) {
+    formData.append("orgId", orgId);
+  }
+
+  const res = await axiosInstance.post<UploadImageResponse>(
+    "/datasets/upload-image",
+    formData,
+    {
+      headers: { "Content-Type": "multipart/form-data" },
+    }
+  );
+  return res.data;
+};
+

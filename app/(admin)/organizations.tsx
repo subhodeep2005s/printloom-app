@@ -1,25 +1,25 @@
 import {
-  useOrganizations,
-  useUpdateOrganization,
-  useDeleteOrganization,
+    useDeleteOrganization,
+    useOrganizations,
+    useUpdateOrganization,
 } from "@/app/shared/api/auth.query";
 import { useToast } from "@/app/shared/components/Toast";
 import { OrganizationDto } from "@/app/shared/types/auth/types";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
-  ActivityIndicator,
-  FlatList,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
+    ActivityIndicator,
+    FlatList,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    Pressable,
+    RefreshControl,
+    ScrollView,
+    Text,
+    TextInput,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
