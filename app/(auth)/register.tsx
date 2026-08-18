@@ -75,7 +75,7 @@ export default function RegisterScreen() {
   };
 
   const handleRegister = () => {
-    if (!form.email.trim() || !form.password.trim() || !form.name.trim()) {
+    if (!form.email.trim() || !form.password.trim()) {
       return;
     }
 
@@ -97,8 +97,7 @@ export default function RegisterScreen() {
     return err?.response?.data?.message || "Registration failed";
   };
 
-  const isFormValid =
-    form.email.trim() && form.password.trim() && form.name.trim();
+  const isFormValid = form.email.trim() && form.password.trim();
 
   return (
     <AuthShell
@@ -125,7 +124,7 @@ export default function RegisterScreen() {
           label="Organization Name"
           icon="business-outline"
           placeholder="Enter organization name"
-          value={form.name}
+          value={form.name ?? ""}
           onChangeText={(v) => handleChange("name", v)}
         />
 

@@ -13,7 +13,7 @@ export type OrganizationType =
 export interface AuthUser {
   id: string;
   email: string;
-  name: string;
+  name: string | null;
   organizationType: OrganizationType | null;
   mobileNumber: string | null;
   role: Role;
@@ -40,8 +40,8 @@ export interface MeResponse {
 export interface RegisterPayload {
   email: string;
   password: string;
-  name: string;
-  organizationType: OrganizationType;
+  name?: string | null;
+  organizationType?: OrganizationType | null;
 }
 
 export interface RegisterResponse {
@@ -49,8 +49,8 @@ export interface RegisterResponse {
   data: {
     id: string;
     email: string;
-    name: string;
-    organizationType: OrganizationType;
+    name: string | null;
+    organizationType: OrganizationType | null;
   };
 }
 
@@ -73,8 +73,8 @@ export interface ApiResponse<T = any> {
 export interface OrganizationDto {
   id: string;
   email: string;
-  name: string;
-  organization_type: string;
+  name: string | null;
+  organization_type: string | null;
   created_at: string;
   is_active: boolean;
 }

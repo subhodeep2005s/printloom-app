@@ -97,7 +97,7 @@ function OrganizationCard({ org, onPress }: { org: OrganizationDto; onPress: () 
     >
       <View className="w-12 h-12 rounded-xl bg-gray-200 items-center justify-center">
         <Text className="text-gray-500 font-bold text-lg">
-          {org.name.charAt(0).toUpperCase()}
+          {(org.name ?? "?").charAt(0).toUpperCase()}
         </Text>
       </View>
       <View className="flex-1 ml-3">
@@ -135,9 +135,9 @@ function OrgEditModal({
   onUpdated: () => void;
 }) {
   const [form, setForm] = useState({
-    name: org.name,
+    name: org.name ?? "",
     email: org.email,
-    organizationType: org.organization_type,
+    organizationType: org.organization_type ?? "organization",
     isActive: org.is_active,
   });
 
