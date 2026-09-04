@@ -74,8 +74,18 @@ export default function RegisterScreen() {
 
   const isPasswordValid = form.password.trim().length >= 8;
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim());
-  const isFormValid =
-    form.name?.trim() && isEmailValid && isPasswordValid && !loading;
+  const isMobileValid = /^\d{10}$/.test(form.mobileNumber?.trim() || "");
+  const isFormValid = !!(
+    form.name?.trim() &&
+    isEmailValid &&
+    isPasswordValid &&
+    isMobileValid &&
+    form.address?.trim() &&
+    form.city?.trim() &&
+    form.state?.trim() &&
+    form.zipCode?.trim() &&
+    !loading
+  );
 
   const handleRegister = async () => {
     if (!form.name?.trim()) {
@@ -96,19 +106,30 @@ export default function RegisterScreen() {
       return;
     }
 
+    if (!isMobileValid) {
+      setErrorMessage("Mobile number must be exactly 10 digits.");
+      mobileRef.current?.focus();
+      return;
+    }
+
+    if (!form.address?.trim() || !form.city?.trim() || !form.state?.trim() || !form.zipCode?.trim()) {
+      setErrorMessage("Please fill out all address fields.");
+      return;
+    }
+
     setLoading(true);
     setErrorMessage(null);
 
     const payload: RegisterPayload = {
-      name: form.name.trim() || null,
+      name: form.name.trim(),
       organizationType: form.organizationType || "organization",
       email: form.email.trim().toLowerCase(),
       password: form.password,
-      address: form.address?.trim() || null,
-      city: form.city?.trim() || null,
-      state: form.state?.trim() || null,
-      zipCode: form.zipCode?.trim() || null,
-      mobileNumber: form.mobileNumber?.trim() || null,
+      address: form.address?.trim() || "",
+      city: form.city?.trim() || "",
+      state: form.state?.trim() || "",
+      zipCode: form.zipCode?.trim() || "",
+      mobileNumber: `91${form.mobileNumber?.trim() || ""}`,
     };
 
     try {
@@ -250,13 +271,9 @@ export default function RegisterScreen() {
             secureTextEntry={!showPassword}
             value={form.password}
             onChangeText={(v) => handleChange("password", v)}
-            returnKeyType={showOptionalFields ? "next" : "go"}
+            returnKeyType="next"
             onSubmitEditing={() => {
-              if (showOptionalFields) {
-                setTimeout(() => mobileRef.current?.focus(), 100);
-              } else {
-                handleRegister();
-              }
+              setTimeout(() => mobileRef.current?.focus(), 100);
             }}
             editable={!loading}
             secureToggle={{
@@ -266,110 +283,88 @@ export default function RegisterScreen() {
           />
         </View>
 
-        <View className="mb-2 mt-4 rounded-xl border border-gray-200 bg-white shadow-sm">
-          <Pressable
-            className="flex-row items-center justify-between px-4 py-4"
-            onPress={() => setShowOptionalFields((prev) => !prev)}
-          >
-            <View className="flex-row items-center gap-2">
-              <Ionicons name="location-outline" size={20} color="#4B5563" />
-              <Text className="text-sm font-semibold text-gray-700">
-                Contact & Location (Optional)
-              </Text>
-            </View>
-            <Ionicons
-              name={showOptionalFields ? "chevron-up" : "chevron-down"}
-              size={20}
-              color="#9CA3AF"
+        <View className="mb-4">
+          <AuthField
+            ref={mobileRef}
+            label="Mobile Number"
+            icon="call-outline"
+            placeholder="9876543210"
+            keyboardType="phone-pad"
+            maxLength={10}
+            value={form.mobileNumber ?? ""}
+            onChangeText={(v) => handleChange("mobileNumber", v.replace(/[^0-9]/g, ""))}
+            returnKeyType="next"
+            onSubmitEditing={() => {
+              setTimeout(() => addressRef.current?.focus(), 100);
+            }}
+            blurOnSubmit={false}
+            editable={!loading}
+          />
+        </View>
+
+        <View className="mb-4">
+          <AuthField
+            ref={addressRef}
+            label="Address"
+            icon="navigate-outline"
+            placeholder="Street address or campus"
+            value={form.address ?? ""}
+            onChangeText={(v) => handleChange("address", v)}
+            returnKeyType="next"
+            onSubmitEditing={() => {
+              setTimeout(() => cityRef.current?.focus(), 100);
+            }}
+            blurOnSubmit={false}
+            editable={!loading}
+          />
+        </View>
+
+        <View className="mb-4 flex-row gap-3">
+          <View className="flex-1">
+            <AuthField
+              ref={cityRef}
+              label="City"
+              placeholder="City"
+              value={form.city ?? ""}
+              onChangeText={(v) => handleChange("city", v)}
+              returnKeyType="next"
+              onSubmitEditing={() => {
+                setTimeout(() => stateRef.current?.focus(), 100);
+              }}
+              blurOnSubmit={false}
+              editable={!loading}
             />
-          </Pressable>
+          </View>
+          <View className="flex-1">
+            <AuthField
+              ref={stateRef}
+              label="State"
+              placeholder="State"
+              value={form.state ?? ""}
+              onChangeText={(v) => handleChange("state", v)}
+              returnKeyType="next"
+              onSubmitEditing={() => {
+                setTimeout(() => zipCodeRef.current?.focus(), 100);
+              }}
+              blurOnSubmit={false}
+              editable={!loading}
+            />
+          </View>
+        </View>
 
-          {showOptionalFields && (
-            <View className="space-y-4 border-t border-gray-100 p-4 pt-5">
-              <View className="mb-4">
-                <AuthField
-                  ref={mobileRef}
-                  label="Mobile Number"
-                  icon="call-outline"
-                  placeholder="+91 98765 43210"
-                  keyboardType="phone-pad"
-                  value={form.mobileNumber ?? ""}
-                  onChangeText={(v) => handleChange("mobileNumber", v)}
-                  returnKeyType="next"
-                  onSubmitEditing={() => {
-                    setTimeout(() => addressRef.current?.focus(), 100);
-                  }}
-                  blurOnSubmit={false}
-                  editable={!loading}
-                />
-              </View>
-
-              <View className="mb-4">
-                <AuthField
-                  ref={addressRef}
-                  label="Address"
-                  icon="navigate-outline"
-                  placeholder="Street address or campus"
-                  value={form.address ?? ""}
-                  onChangeText={(v) => handleChange("address", v)}
-                  returnKeyType="next"
-                  onSubmitEditing={() => {
-                    setTimeout(() => cityRef.current?.focus(), 100);
-                  }}
-                  blurOnSubmit={false}
-                  editable={!loading}
-                />
-              </View>
-
-              <View className="mb-4 flex-row gap-3">
-                <View className="flex-1">
-                  <AuthField
-                    ref={cityRef}
-                    label="City"
-                    placeholder="City"
-                    value={form.city ?? ""}
-                    onChangeText={(v) => handleChange("city", v)}
-                    returnKeyType="next"
-                    onSubmitEditing={() => {
-                      setTimeout(() => stateRef.current?.focus(), 100);
-                    }}
-                    blurOnSubmit={false}
-                    editable={!loading}
-                  />
-                </View>
-                <View className="flex-1">
-                  <AuthField
-                    ref={stateRef}
-                    label="State"
-                    placeholder="State"
-                    value={form.state ?? ""}
-                    onChangeText={(v) => handleChange("state", v)}
-                    returnKeyType="next"
-                    onSubmitEditing={() => {
-                      setTimeout(() => zipCodeRef.current?.focus(), 100);
-                    }}
-                    blurOnSubmit={false}
-                    editable={!loading}
-                  />
-                </View>
-              </View>
-
-              <View className="mb-2">
-                <AuthField
-                  ref={zipCodeRef}
-                  label="Zip / Postal Code"
-                  icon="pin-outline"
-                  placeholder="e.g. 700001"
-                  keyboardType="number-pad"
-                  value={form.zipCode ?? ""}
-                  onChangeText={(v) => handleChange("zipCode", v)}
-                  returnKeyType="go"
-                  onSubmitEditing={handleRegister}
-                  editable={!loading}
-                />
-              </View>
-            </View>
-          )}
+        <View className="mb-2">
+          <AuthField
+            ref={zipCodeRef}
+            label="Zip / Postal Code"
+            icon="pin-outline"
+            placeholder="e.g. 700001"
+            keyboardType="number-pad"
+            value={form.zipCode ?? ""}
+            onChangeText={(v) => handleChange("zipCode", v)}
+            returnKeyType="go"
+            onSubmitEditing={handleRegister}
+            editable={!loading}
+          />
         </View>
 
         {errorMessage && (
