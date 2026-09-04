@@ -42,6 +42,11 @@ export interface RegisterPayload {
   password: string;
   name?: string | null;
   organizationType?: OrganizationType | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zipCode?: string | null;
+  mobileNumber?: string | null;
 }
 
 export interface RegisterResponse {

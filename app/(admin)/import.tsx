@@ -1,8 +1,8 @@
-import { useOrganizations } from "@/app/shared/api/auth.query";
-import { useImportJobs, useUploadImport } from "@/app/shared/api/import.query";
-import { useToast } from "@/app/shared/components/Toast";
-import { OrganizationDto } from "@/app/shared/types/auth/types";
-import { ImportJobDto, ImportJobStatus } from "@/app/shared/types/import/types";
+import { useOrganizations } from "@/shared/api/auth.query";
+import { useImportJobs, useUploadImport } from "@/shared/api/import.query";
+import { useToast } from "@/shared/components/Toast";
+import { OrganizationDto } from "@/shared/types/auth/types";
+import { ImportJobDto, ImportJobStatus } from "@/shared/types/import/types";
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import * as Haptics from "expo-haptics";

@@ -3,7 +3,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
 	createTabScreenOptions,
 	tabOptions,
-} from "../shared/components/navigation/tabStyles";
+} from "@/shared/components/navigation/tabStyles";
 
 export default function AdminLayout() {
 	const insets = useSafeAreaInsets();

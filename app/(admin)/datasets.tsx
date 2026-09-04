@@ -1,16 +1,17 @@
 import {
     useOrganizations,
-} from "@/app/shared/api/auth.query";
+} from "@/shared/api/auth.query";
 import {
     useDatasets,
     useDeleteRecord,
     useRecords,
     useUpdateRecord,
     useUploadImage,
-} from "@/app/shared/api/dataset.query";
-import { useToast } from "@/app/shared/components/Toast";
-import { OrganizationDto } from "@/app/shared/types/auth/types";
-import { DatasetDto, DynamicRecordDto } from "@/app/shared/types/dataset/types";
+} from "@/shared/api/dataset.query";
+import { useDashboardStats } from "@/shared/api/dashboard.query";
+import { useToast } from "@/shared/components/Toast";
+import { OrganizationDto } from "@/shared/types/auth/types";
+import { DatasetDto, DynamicRecordDto } from "@/shared/types/dataset/types";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
@@ -77,6 +78,8 @@ export default function AdminDatasetsScreen() {
   }, [orgs, selectedOrgId]);
 
   const currentOrg = orgs.find((o) => o.id === selectedOrgId) ?? null;
+
+  const { data: stats } = useDashboardStats(selectedOrgId);
 
   const { data: datasetsData, isLoading: datasetsLoading } = useDatasets(selectedOrgId);
   const datasets = useMemo(() => datasetsData?.items ?? [], [datasetsData]);
@@ -342,6 +345,7 @@ export default function AdminDatasetsScreen() {
         datasets={datasets}
         selectedId={selectedDatasetId}
         onSelect={selectDataset}
+        stats={stats}
       />
 
       {/* Record Profile + Edit Modal */}
@@ -645,7 +649,17 @@ function RecordProfileModal({
                 <Ionicons name="create-outline" size={20} color="#EAB308" />
               </Pressable>
             ) : (
-              <View className="w-10" />
+              <Pressable
+                className={`px-3 py-2 rounded-xl ${saving ? "bg-gray-100" : "bg-black"}`}
+                onPress={handleSave}
+                disabled={saving}
+              >
+                {saving ? (
+                  <ActivityIndicator color="#EAB308" size="small" />
+                ) : (
+                  <Text className="text-yellow-400 font-bold text-sm">Save</Text>
+                )}
+              </Pressable>
             )}
           </View>
 
@@ -791,28 +805,7 @@ function RecordProfileModal({
             </View>
 
             {/* Actions */}
-            {editing ? (
-              <View className="px-6 pb-8">
-                <Pressable
-                  className={`rounded-2xl py-4 items-center ${saving ? "bg-gray-800" : "bg-black"}`}
-                  onPress={handleSave}
-                  disabled={saving}
-                >
-                  {saving ? (
-                    <ActivityIndicator color="#EAB308" />
-                  ) : (
-                    <Text className="text-yellow-400 font-bold text-base">Save Changes</Text>
-                  )}
-                </Pressable>
-                <Pressable
-                  className="rounded-2xl py-3 items-center mt-2 active:bg-gray-100"
-                  onPress={() => setEditing(false)}
-                  disabled={saving}
-                >
-                  <Text className="text-gray-500 font-medium text-sm">Cancel</Text>
-                </Pressable>
-              </View>
-            ) : (
+            {!editing && (
               <View className="px-6 pb-8">
                 <Pressable
                   className="bg-black rounded-2xl py-4 items-center flex-row justify-center"
@@ -821,7 +814,7 @@ function RecordProfileModal({
                     setEditing(true);
                   }}
                 >
-                  <Ionicons name="create-outline" size={18} color="#EAB308" />
+                  <Ionicons name="create-outline" size={20} color="#EAB308" />
                   <Text className="text-yellow-400 font-bold text-base ml-2">Edit Record</Text>
                 </Pressable>
 
@@ -844,23 +837,59 @@ function RecordProfileModal({
 // ─── Pickers ───────────────────────────────────
 
 function DatasetPickerModal({
-  visible, onClose, datasets, selectedId, onSelect,
+  visible,
+  onClose,
+  datasets,
+  selectedId,
+  onSelect,
+  stats,
 }: {
-  visible: boolean; onClose: () => void; datasets: DatasetDto[]; selectedId: string | null; onSelect: (id: string) => void;
+  visible: boolean;
+  onClose: () => void;
+  datasets: DatasetDto[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  stats?: any;
 }) {
   return (
     <Modal visible={visible} transparent animationType="slide">
       <View className="flex-1 justify-end bg-black/40">
-        <View className="bg-white rounded-t-3xl max-h-[60%]">
+        <View className="bg-white rounded-t-3xl max-h-[75%]">
           <View className="items-center pt-3 pb-2">
             <View className="w-10 h-1 bg-gray-300 rounded-full" />
           </View>
           <View className="flex-row items-center justify-between px-6 pb-3">
             <Text className="text-lg font-bold text-black">Select Dataset</Text>
-            <Pressable onPress={onClose} className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center">
+            <Pressable
+              className="w-8 h-8 bg-gray-100 rounded-full items-center justify-center"
+              onPress={onClose}
+            >
               <Ionicons name="close" size={18} color="#000" />
             </Pressable>
           </View>
+
+          {/* Stats Summary Area */}
+          {stats && (
+            <View className="px-6 pb-4">
+              <View className="bg-gray-50 border border-gray-100 rounded-2xl p-4 flex-row justify-between">
+                <View className="items-center">
+                  <Text className="text-xs text-gray-400 font-medium mb-1">Datasets</Text>
+                  <Text className="text-lg font-bold text-black">{stats.totalDatasets}</Text>
+                </View>
+                <View className="w-px bg-gray-200" />
+                <View className="items-center">
+                  <Text className="text-xs text-gray-400 font-medium mb-1">Records</Text>
+                  <Text className="text-lg font-bold text-black">{stats.totalRecords}</Text>
+                </View>
+                <View className="w-px bg-gray-200" />
+                <View className="items-center">
+                  <Text className="text-xs text-gray-400 font-medium mb-1">Imports</Text>
+                  <Text className="text-lg font-bold text-black">{stats.totalImports}</Text>
+                </View>
+              </View>
+            </View>
+          )}
+
           <ScrollView className="px-6 pb-8">
             {datasets.map((ds, index) => {
               const isSelected = ds.id === selectedId;

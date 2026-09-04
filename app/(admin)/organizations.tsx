@@ -2,9 +2,9 @@ import {
     useDeleteOrganization,
     useOrganizations,
     useUpdateOrganization,
-} from "@/app/shared/api/auth.query";
-import { useToast } from "@/app/shared/components/Toast";
-import { OrganizationDto } from "@/app/shared/types/auth/types";
+} from "@/shared/api/auth.query";
+import { useToast } from "@/shared/components/Toast";
+import { OrganizationDto } from "@/shared/types/auth/types";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import React, { useState } from "react";

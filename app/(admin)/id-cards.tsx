@@ -1,16 +1,17 @@
-import { useOrganizations } from "@/app/shared/api/auth.query";
-import { useDatasets } from "@/app/shared/api/dataset.query";
-import { usePrintDataset, useTemplates } from "@/app/shared/api/print.query";
-import { useToast } from "@/app/shared/components/Toast";
-import { OrganizationDto } from "@/app/shared/types/auth/types";
-import { DatasetDto } from "@/app/shared/types/dataset/types";
-import { TemplateDto } from "@/app/shared/types/print/types";
+import { useOrganizations } from "@/shared/api/auth.query";
+import { useDatasets } from "@/shared/api/dataset.query";
+import { usePrintDataset, useTemplates } from "@/shared/api/print.query";
+import { useToast } from "@/shared/components/Toast";
+import { OrganizationDto } from "@/shared/types/auth/types";
+import { DatasetDto } from "@/shared/types/dataset/types";
+import { TemplateDto } from "@/shared/types/print/types";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Haptics from "expo-haptics";
 import * as Sharing from "expo-sharing";
 import React, { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
     ActivityIndicator,
     Modal,
@@ -19,6 +20,7 @@ import {
     ScrollView,
     Text,
     View,
+    RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -31,6 +33,14 @@ export default function IdCardsScreen() {
   const [showDatasetPicker, setShowDatasetPicker] = useState(false);
 
   const toast = useToast();
+  const queryClient = useQueryClient();
+
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await queryClient.invalidateQueries();
+    setRefreshing(false);
+  };
 
   const { data: orgsData, isLoading: orgsLoading } = useOrganizations();
   const orgs = useMemo(() => orgsData ?? [], [orgsData]);
@@ -246,7 +256,13 @@ export default function IdCardsScreen() {
         </Text>
       </View>
 
-      <ScrollView className="flex-1 px-6">
+      <ScrollView 
+        className="flex-1 px-6"
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#EAB308" />
+        }
+      >
         {/* Org Selector */}
         <View className="mb-4">
           <Text className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 ml-1">

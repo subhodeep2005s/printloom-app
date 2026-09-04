@@ -1,13 +1,15 @@
-import { getOrgId } from "@/app/lib/orgStore";
+import { getOrgId } from "@/lib/orgStore";
 import {
   useDatasets,
   useDeleteRecord,
   useRecords,
   useUpdateRecord,
+  useCreateRecord,
   useUploadImage,
-} from "@/app/shared/api/dataset.query";
-import { useToast } from "@/app/shared/components/Toast";
-import { DatasetDto, DynamicRecordDto } from "@/app/shared/types/dataset/types";
+} from "@/shared/api/dataset.query";
+import { useDashboardStats } from "@/shared/api/dashboard.query";
+import { useToast } from "@/shared/components/Toast";
+import { DatasetDto, DynamicRecordDto } from "@/shared/types/dataset/types";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
@@ -54,6 +56,7 @@ export default function DatasheetScreen() {
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [selectedRecord, setSelectedRecord] = useState<DynamicRecordDto | null>(null);
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const isRefreshing = useRef(false);
@@ -64,6 +67,8 @@ export default function DatasheetScreen() {
   useEffect(() => {
     getOrgId().then(setOrgId);
   }, []);
+
+  const { data: stats } = useDashboardStats(orgId);
 
   const { data: datasetsData, isLoading: datasetsLoading } = useDatasets(orgId);
   const datasets = useMemo(() => datasetsData?.items ?? [], [datasetsData]);
@@ -190,9 +195,9 @@ export default function DatasheetScreen() {
         </Pressable>
       </View>
 
-      {/* Search */}
+      {/* Search and Add */}
       {selectedDatasetId && (
-        <View className="px-6 mb-3 flex-row items-center">
+        <View className="px-6 mb-3 flex-row items-center space-x-3">
           <View className="flex-1 flex-row items-center bg-gray-50 rounded-xl px-3 py-2.5">
             <Ionicons name="search" size={18} color="#9CA3AF" />
             <TextInput
@@ -210,6 +215,15 @@ export default function DatasheetScreen() {
               </Pressable>
             )}
           </View>
+          <Pressable
+            className="w-10 h-10 ml-2 bg-black rounded-xl items-center justify-center active:bg-gray-800"
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              setIsCreatingNew(true);
+            }}
+          >
+            <Ionicons name="add" size={24} color="#EAB308" />
+          </Pressable>
         </View>
       )}
 
@@ -301,18 +315,39 @@ export default function DatasheetScreen() {
         datasets={datasets}
         selectedId={selectedDatasetId}
         onSelect={selectDataset}
+        stats={stats}
       />
 
       {/* Record Profile + Edit Modal */}
-      {selectedRecord && (
+      {(selectedRecord || isCreatingNew) && currentDataset && (
         <RecordProfileModal
-          record={selectedRecord}
+          record={
+            selectedRecord ?? {
+              id: "new",
+              datasetId: currentDataset.id,
+              data: {},
+              rowIndex: total,
+              normalizedData: {},
+              createdAt: "",
+              updatedAt: "",
+            }
+          }
+          isCreating={isCreatingNew}
           headers={headers}
           orgId={orgId}
-          onClose={() => setSelectedRecord(null)}
-          onDelete={() => handleDelete(selectedRecord.id)}
+          onClose={() => {
+            setSelectedRecord(null);
+            setIsCreatingNew(false);
+          }}
+          onDelete={() => {
+            if (selectedRecord) handleDelete(selectedRecord.id);
+          }}
           onUpdated={(updated) => {
             setSelectedRecord(updated);
+            refetch();
+          }}
+          onCreated={() => {
+            setIsCreatingNew(false);
             refetch();
           }}
         />
@@ -473,23 +508,30 @@ function RecordProfileModal({
   record,
   headers,
   orgId,
+  isCreating,
   onClose,
   onDelete,
   onUpdated,
+  onCreated,
 }: {
   record: DynamicRecordDto;
   headers: string[];
   orgId: string | null;
+  isCreating?: boolean;
   onClose: () => void;
   onDelete: () => void;
   onUpdated: (updated: DynamicRecordDto) => void;
+  onCreated?: () => void;
 }) {
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(isCreating ?? false);
   const [form, setForm] = useState<Record<string, string>>({});
   const [localPhotoUri, setLocalPhotoUri] = useState<string | null>(null);
   const toast = useToast();
-  const { mutate: updateRecord, isPending: saving } = useUpdateRecord();
+  const { mutate: updateRecord, isPending: savingUpdate } = useUpdateRecord();
+  const { mutate: createRecord, isPending: savingCreate } = useCreateRecord();
   const { mutate: uploadImage, isPending: uploading } = useUploadImage();
+  
+  const saving = savingUpdate || savingCreate;
 
   useEffect(() => {
     if (editing) {
@@ -551,24 +593,45 @@ function RecordProfileModal({
 
   const handleSave = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    updateRecord(
-      { recordId: record.id, data: form, orgId: orgId || undefined },
-      {
-        onSuccess: (res) => {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          toast.show({ type: "success", title: "Saved", message: "Record updated" });
-          setEditing(false);
-          onUpdated(res.data);
-        },
-        onError: (err: any) => {
-          toast.show({
-            type: "error",
-            title: "Error",
-            message: err?.response?.data?.message || "Failed to save",
-          });
-        },
-      }
-    );
+    
+    if (isCreating) {
+      createRecord(
+        { datasetId: record.datasetId, data: form, orgId: orgId || undefined },
+        {
+          onSuccess: (res) => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            toast.show({ type: "success", title: "Created", message: "New record added" });
+            if (onCreated) onCreated();
+          },
+          onError: (err: any) => {
+            toast.show({
+              type: "error",
+              title: "Error",
+              message: err?.response?.data?.message || "Failed to create record",
+            });
+          },
+        }
+      );
+    } else {
+      updateRecord(
+        { recordId: record.id, data: form, orgId: orgId || undefined },
+        {
+          onSuccess: (res) => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            toast.show({ type: "success", title: "Saved", message: "Record updated" });
+            setEditing(false);
+            onUpdated(res.data);
+          },
+          onError: (err: any) => {
+            toast.show({
+              type: "error",
+              title: "Error",
+              message: err?.response?.data?.message || "Failed to save",
+            });
+          },
+        }
+      );
+    }
   };
 
   const photoValue = photoHeader ? String(record.data[photoHeader] ?? "").trim() : "";
@@ -598,7 +661,7 @@ function RecordProfileModal({
               <Ionicons name="arrow-back" size={20} color="#000" />
             </Pressable>
             <Text className="text-lg font-bold text-black">
-              {editing ? "Edit Record" : "Record Details"}
+              {isCreating ? "New Record" : editing ? "Edit Record" : "Record Details"}
             </Text>
             {!editing ? (
               <Pressable
@@ -611,7 +674,17 @@ function RecordProfileModal({
                 <Ionicons name="create-outline" size={20} color="#EAB308" />
               </Pressable>
             ) : (
-              <View className="w-10" />
+              <Pressable
+                className={`px-3 py-2 rounded-xl ${saving ? "bg-gray-100" : "bg-black"}`}
+                onPress={handleSave}
+                disabled={saving}
+              >
+                {saving ? (
+                  <ActivityIndicator color="#EAB308" size="small" />
+                ) : (
+                  <Text className="text-yellow-400 font-bold text-sm">Save</Text>
+                )}
+              </Pressable>
             )}
           </View>
 
@@ -641,7 +714,7 @@ function RecordProfileModal({
                     <Image source={{ uri: photoUrl }} className="w-24 h-24" resizeMode="cover" />
                   ) : (
                     <Text className="text-black text-3xl font-bold">
-                      {displayName.charAt(0).toUpperCase()}
+                      {isCreating ? "+" : displayName.charAt(0).toUpperCase()}
                     </Text>
                   )}
                 </View>
@@ -769,28 +842,7 @@ function RecordProfileModal({
             </View>
 
             {/* Actions */}
-            {editing ? (
-              <View className="px-6 pb-8">
-                <Pressable
-                  className={`rounded-2xl py-4 items-center ${saving ? "bg-gray-800" : "bg-black"}`}
-                  onPress={handleSave}
-                  disabled={saving}
-                >
-                  {saving ? (
-                    <ActivityIndicator color="#EAB308" />
-                  ) : (
-                    <Text className="text-yellow-400 font-bold text-base">Save Changes</Text>
-                  )}
-                </Pressable>
-                <Pressable
-                  className="rounded-2xl py-3 items-center mt-2 active:bg-gray-100"
-                  onPress={() => setEditing(false)}
-                  disabled={saving}
-                >
-                  <Text className="text-gray-500 font-medium text-sm">Cancel</Text>
-                </Pressable>
-              </View>
-            ) : (
+            {!editing && !isCreating && (
               <View className="px-6 pb-8">
                 <Pressable
                   className="bg-black rounded-2xl py-4 items-center flex-row justify-center"
@@ -799,16 +851,15 @@ function RecordProfileModal({
                     setEditing(true);
                   }}
                 >
-                  <Ionicons name="create-outline" size={18} color="#EAB308" />
+                  <Ionicons name="create-outline" size={20} color="#EAB308" />
                   <Text className="text-yellow-400 font-bold text-base ml-2">Edit Record</Text>
                 </Pressable>
-
                 <Pressable
-                  className="bg-red-50 rounded-2xl py-4 items-center flex-row justify-center mt-3 active:bg-red-100"
+                  className="border border-red-200 bg-red-50 rounded-2xl py-4 items-center flex-row justify-center mt-3"
                   onPress={onDelete}
                 >
-                  <Ionicons name="trash-outline" size={18} color="#EF4444" />
-                  <Text className="text-red-500 font-semibold text-base ml-2">Delete Record</Text>
+                  <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                  <Text className="text-red-500 font-bold text-base ml-2">Delete Record</Text>
                 </Pressable>
               </View>
             )}
@@ -827,17 +878,19 @@ function DatasetPickerModal({
   datasets,
   selectedId,
   onSelect,
+  stats,
 }: {
   visible: boolean;
   onClose: () => void;
   datasets: DatasetDto[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  stats?: any;
 }) {
   return (
     <Modal visible={visible} transparent animationType="slide">
       <View className="flex-1 justify-end bg-black/40">
-        <View className="bg-white rounded-t-3xl max-h-[60%]">
+        <View className="bg-white rounded-t-3xl max-h-[75%]">
           <View className="items-center pt-3 pb-2">
             <View className="w-10 h-1 bg-gray-300 rounded-full" />
           </View>
@@ -850,6 +903,29 @@ function DatasetPickerModal({
               <Ionicons name="close" size={18} color="#000" />
             </Pressable>
           </View>
+
+          {/* Stats Summary Area */}
+          {stats && (
+            <View className="px-6 pb-4">
+              <View className="bg-gray-50 border border-gray-100 rounded-2xl p-4 flex-row justify-between">
+                <View className="items-center">
+                  <Text className="text-xs text-gray-400 font-medium mb-1">Datasets</Text>
+                  <Text className="text-lg font-bold text-black">{stats.totalDatasets}</Text>
+                </View>
+                <View className="w-px bg-gray-200" />
+                <View className="items-center">
+                  <Text className="text-xs text-gray-400 font-medium mb-1">Records</Text>
+                  <Text className="text-lg font-bold text-black">{stats.totalRecords}</Text>
+                </View>
+                <View className="w-px bg-gray-200" />
+                <View className="items-center">
+                  <Text className="text-xs text-gray-400 font-medium mb-1">Imports</Text>
+                  <Text className="text-lg font-bold text-black">{stats.totalImports}</Text>
+                </View>
+              </View>
+            </View>
+          )}
+
           <ScrollView className="px-6 pb-8">
             {datasets.map((ds, index) => {
               const isSelected = ds.id === selectedId;

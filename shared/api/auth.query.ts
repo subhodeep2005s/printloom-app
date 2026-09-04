@@ -1,4 +1,4 @@
-import { clearOrgId } from "@/app/lib/orgStore";
+import { clearOrgId } from "@/lib/orgStore";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as SecureStore from "expo-secure-store";
 import type {
@@ -21,10 +21,12 @@ import {
 } from "./auth.api";
 
 export const useLogin = () => {
+	const queryClient = useQueryClient();
 	return useMutation({
 		mutationFn: (data: LoginPayload) => loginApi(data),
 		onSuccess: async (data) => {
 			await SecureStore.setItemAsync("access_token", data.data.token);
+			await queryClient.invalidateQueries({ queryKey: ["me"] });
 		},
 	});
 };
@@ -33,8 +35,24 @@ export const useMe = () => {
 	return useQuery({
 		queryKey: ["me"],
 		queryFn: async () => {
-			const res = await getMeApi();
-			return res.data;
+			const token = await SecureStore.getItemAsync("access_token");
+			if (!token) {
+				return null;
+			}
+			try {
+				const res = await getMeApi();
+				return res.data;
+			} catch (err: any) {
+				if (err?.response?.status === 401) {
+					await SecureStore.deleteItemAsync("access_token");
+					return null;
+				}
+				throw err;
+			}
+		},
+		retry: (failureCount, error: any) => {
+			if (error?.response?.status === 401) return false;
+			return failureCount < 2;
 		},
 	});
 };

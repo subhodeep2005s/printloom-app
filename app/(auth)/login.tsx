@@ -1,22 +1,33 @@
-import { useLogin } from "@/app/shared/api/auth.query";
-import { AuthField } from "@/app/shared/components/auth/AuthField";
-import { AuthShell } from "@/app/shared/components/auth/AuthShell";
-import { useToast } from "@/app/shared/components/Toast";
-import { colors } from "@/app/shared/constants/theme";
+import { useLogin } from "@/shared/api/auth.query";
+import { AuthField } from "@/shared/components/auth/AuthField";
+import { AuthShell } from "@/shared/components/auth/AuthShell";
+import { useToast } from "@/shared/components/Toast";
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useState } from "react";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import React, { useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
+  const emailRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
+
   const { mutate, isPending, isError, error } = useLogin();
   const toast = useToast();
 
+  const isFormFilled = email.trim().length > 0 && password.trim().length > 0;
+
   const handleLogin = () => {
-    if (!email.trim() || !password.trim()) return;
+    if (!isFormFilled || isPending) return;
 
     mutate(
       { email: email.trim(), password },
@@ -36,86 +47,107 @@ export default function LoginScreen() {
   const getErrorMessage = () => {
     if (!isError || !error) return null;
     const err = error as any;
-    return err?.response?.data?.message || "Invalid credentials";
+    return (
+      err?.response?.data?.message ||
+      err?.response?.data?.error ||
+      err?.message ||
+      "Invalid email or password. Please try again."
+    );
   };
 
   return (
     <AuthShell
       eyebrow="Secure access"
-      title="Sign in to PrintLoom"
-      subtitle="Manage datasets, imports, and ID card printing from a cleaner mobile workspace."
-      heroImage={require("../../assets/images/login.png")}
-      footer={(
-        <View className="flex-row items-center justify-center">
-          <Text className="text-sm" style={{ color: colors.inkSoft }}>
-            Don&apos;t have an account?{" "}
-          </Text>
-          <Pressable onPress={() => router.push("/(auth)/register")}>
-            <Text className="text-sm font-semibold" style={{ color: colors.ink }}>
-              Register
-            </Text>
+      title="Sign In"
+      subtitle="Enter your email and password to access your workspace."
+      footer={
+        <View className="flex-row justify-center py-2">
+          <Text className="text-gray-500">Don't have an account? </Text>
+          <Pressable
+            hitSlop={10}
+            onPress={() => router.push("/(auth)/register")}
+          >
+            <Text className="font-bold text-gray-900">Register</Text>
           </Pressable>
         </View>
-      )}
+      }
     >
-      <View className="gap-4">
-        <AuthField
-          label="Email"
-          icon="mail-outline"
-          placeholder="Enter your email"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoCorrect={false}
-          value={email}
-          onChangeText={setEmail}
-        />
+      <View className="space-y-5">
+        <View className="mb-4">
+          <AuthField
+            ref={emailRef}
+            label="Email Address"
+            icon="mail-outline"
+            placeholder="name@organization.com"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            value={email}
+            onChangeText={setEmail}
+            returnKeyType="next"
+            onSubmitEditing={() => {
+              setTimeout(() => {
+                passwordRef.current?.focus();
+              }, 100);
+            }}
+            blurOnSubmit={false}
+            editable={!isPending}
+          />
+        </View>
 
-        <AuthField
-          label="Password"
-          icon="lock-closed-outline"
-          placeholder="Enter your password"
-          secureTextEntry={!showPassword}
-          value={password}
-          onChangeText={setPassword}
-          secureToggle={{
-            visible: showPassword,
-            onToggle: () => setShowPassword((value) => !value),
-          }}
-        />
+        <View className="mb-6">
+          <View className="mb-1.5 flex-row items-center justify-between">
+            <Text className="ml-1 text-sm font-medium text-gray-700">Password</Text>
+            <Pressable
+              hitSlop={10}
+              onPress={() => router.push("/(auth)/forgot-password")}
+            >
+              <Text className="text-xs font-semibold text-blue-600">
+                Forgot password?
+              </Text>
+            </Pressable>
+          </View>
+          <AuthField
+            ref={passwordRef}
+            icon="lock-closed-outline"
+            placeholder="Enter your password"
+            secureTextEntry={!showPassword}
+            value={password}
+            onChangeText={setPassword}
+            returnKeyType="go"
+            onSubmitEditing={handleLogin}
+            editable={!isPending}
+            secureToggle={{
+              visible: showPassword,
+              onToggle: () => setShowPassword((v) => !v),
+            }}
+          />
+        </View>
 
-        <Pressable
-          className="self-end px-1"
-          onPress={() => router.push("/(auth)/forgot-password")}
-        >
-          <Text className="text-sm font-semibold" style={{ color: colors.goldDeep }}>
-            Forgot password?
-          </Text>
-        </Pressable>
-
-        {isError ? (
-          <View
-            className="rounded-2xl px-4 py-3"
-            style={{ backgroundColor: "#FEF2F2", borderWidth: 1, borderColor: "#FECACA" }}
-          >
-            <Text className="text-sm" style={{ color: colors.danger }}>
+        {isError && (
+          <View className="mb-4 flex-row items-center gap-3 rounded-xl bg-red-50 p-4">
+            <Ionicons name="alert-circle" size={20} color="#EF4444" />
+            <Text className="flex-1 text-sm font-medium text-red-700">
               {getErrorMessage()}
             </Text>
           </View>
-        ) : null}
+        )}
 
         <Pressable
-          className="mt-2 items-center rounded-[24px] py-4"
-          style={{
-            backgroundColor:
-              isPending || !email.trim() || !password.trim() ? "#D1D5DB" : colors.ink,
-          }}
+          className={`mt-4 flex-row items-center justify-center rounded-xl py-4 active:opacity-80 ${
+            isPending || !isFormFilled ? "bg-gray-200" : "bg-gray-900"
+          }`}
           onPress={handleLogin}
-          disabled={isPending || !email.trim() || !password.trim()}
+          disabled={isPending || !isFormFilled}
         >
           {isPending ? (
-            <ActivityIndicator color={colors.gold} />
+            <ActivityIndicator color="#FFFFFF" size="small" />
           ) : (
-            <Text className="text-base font-semibold" style={{ color: colors.goldSoft }}>
+            <Text
+              className={`text-base font-bold ${
+                isFormFilled ? "text-white" : "text-gray-400"
+              }`}
+            >
               Sign In
             </Text>
           )}

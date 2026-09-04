@@ -1,11 +1,27 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
-import { ActivityIndicator, ScrollView, Text, View, Pressable, Linking } from "react-native";
+import { ActivityIndicator, ScrollView, Text, View, Pressable, Linking, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useDashboardStats } from "../shared/api/dashboard.query";
+import { useDashboardStats } from "@/shared/api/dashboard.query";
+
+import { getOrgId } from "@/lib/orgStore";
+import { useEffect, useState } from "react";
 
 export default function DashboardScreen() {
-  const { data: stats, isLoading } = useDashboardStats();
+  const [orgId, setOrgId] = useState<string | null>(null);
+
+  useEffect(() => {
+    getOrgId().then(setOrgId);
+  }, []);
+
+  const { data: stats, isLoading, refetch, isRefetching } = useDashboardStats(orgId);
+
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  };
 
   const statItems = [
     {
@@ -41,7 +57,14 @@ export default function DashboardScreen() {
         </Text>
       </View>
 
-      <ScrollView className="px-6 mt-4 flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+      <ScrollView 
+        className="px-6 mt-4 flex-1" 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={{ paddingBottom: 120 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#EAB308" />
+        }
+      >
         <Pressable 
           className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 mb-6 flex-row items-center active:bg-yellow-100"
           onPress={() => Linking.openURL("https://printloom.in")}

@@ -1,4 +1,4 @@
-import { colors } from "@/app/shared/constants/theme";
+import { colors } from "@/shared/constants/theme";
 import { Ionicons } from "@expo/vector-icons";
 import type { Tabs } from "expo-router";
 import type { ComponentProps } from "react";

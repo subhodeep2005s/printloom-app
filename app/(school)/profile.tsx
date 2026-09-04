@@ -4,8 +4,8 @@ import {
 	useLogout,
 	useMe,
 	useResetPassword,
-} from "@/app/shared/api/auth.query";
-import { useToast } from "@/app/shared/components/Toast";
+} from "@/shared/api/auth.query";
+import { useToast } from "@/shared/components/Toast";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";

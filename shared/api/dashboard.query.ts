@@ -6,9 +6,10 @@ export const DASHBOARD_QUERY_KEYS = {
   stats: ["dashboard", "stats"] as const,
 };
 
-export const useDashboardStats = () => {
+export const useDashboardStats = (orgId?: string | null) => {
   return useQuery<DashboardStatsDto, Error>({
-    queryKey: DASHBOARD_QUERY_KEYS.stats,
-    queryFn: fetchDashboardStats,
+    queryKey: [...DASHBOARD_QUERY_KEYS.stats, orgId],
+    queryFn: () => fetchDashboardStats(orgId),
+    enabled: orgId !== null, // Only fetch when orgId is known (or explicitly undefined if no orgStore is used)
   });
 };

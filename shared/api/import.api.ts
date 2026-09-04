@@ -1,4 +1,4 @@
-import axiosInstance from "@/app/lib/axiosInstance";
+import axiosInstance from "@/lib/axiosInstance";
 import {
   GetImportJobResponse,
   ListImportJobsResponse,
@@ -99,9 +99,12 @@ export const abortMultipartUpload = async (params: {
   return res.data;
 };
 
+import * as FileSystem from "expo-file-system/legacy";
+
 /**
  * Upload a ZIP file using S3 multipart upload with progress tracking.
- * Flow: init → get part URLs → upload parts to S3 → complete
+ * We use Expo FileSystem to natively stream the ENTIRE file as Part 1 
+ * to avoid JS memory limits on large files (e.g. 200MB+ zips).
  */
 export const uploadImagesZipMultipart = async (
   jobId: string,
@@ -117,50 +120,55 @@ export const uploadImagesZipMultipart = async (
     contentType: zipMimeType || "application/zip",
   });
 
-  const { key, uploadId, partSize } = init.data;
-
-  // 2. Fetch the ZIP file as a blob
-  const fileResponse = await fetch(zipUri);
-  const fileBlob = await fileResponse.blob();
-  const total = fileBlob.size;
-  const partCount = Math.ceil(total / partSize);
-
-  const parts: MultipartPart[] = [];
-  let uploadedBytes = 0;
+  const { key, uploadId } = init.data;
 
   try {
-    // 3. Upload each part sequentially (simpler for mobile)
-    for (let partNumber = 1; partNumber <= partCount; partNumber++) {
-      const start = (partNumber - 1) * partSize;
-      const end = Math.min(start + partSize, total);
-      const partBlob = fileBlob.slice(start, end);
+    // 2. Get presigned URL for Part 1
+    const partUrlRes = await getPartUrl({
+      jobId,
+      key,
+      uploadId,
+      partNumber: 1,
+    });
 
-      // Get presigned URL for this part
-      const partUrlRes = await getPartUrl({
-        jobId,
-        key,
-        uploadId,
-        partNumber,
-      });
-
-      // Upload part to S3 with retries
-      const etag = await uploadPartWithRetries(
-        partUrlRes.data.url,
-        partBlob,
-        zipMimeType || "application/zip",
-        3
-      );
-
-      parts.push({ ETag: etag, PartNumber: partNumber });
-      uploadedBytes += partBlob.size;
-
-      if (onProgress) {
-        onProgress(Math.round((uploadedBytes / total) * 100));
+    // 3. Upload the ENTIRE file as Part 1 using Native FileSystem
+    const uploadTask = FileSystem.createUploadTask(
+      partUrlRes.data.url,
+      zipUri,
+      {
+        httpMethod: "PUT",
+        headers: { "Content-Type": zipMimeType || "application/zip" },
+        uploadType: 0 as any, // 0 = FileSystemUploadType.BINARY_CONTENT
+      },
+      (data) => {
+        if (onProgress && data.totalBytesExpectedToSend > 0) {
+          const percent = Math.round(
+            (data.totalBytesSent / data.totalBytesExpectedToSend) * 100
+          );
+          onProgress(percent);
+        }
       }
+    );
+
+    const response = await uploadTask.uploadAsync();
+
+    if (!response || response.status < 200 || response.status >= 300) {
+      throw new Error(`Upload failed with status ${response?.status}`);
     }
 
+    // Extract ETag from response headers
+    const etag =
+      response.headers.ETag ||
+      response.headers.etag ||
+      response.headers.Etag;
+      
+    if (!etag) {
+      throw new Error("Missing ETag from S3 response headers");
+    }
+
+    const parts = [{ ETag: etag, PartNumber: 1 }];
+
     // 4. Complete multipart upload
-    parts.sort((a, b) => a.PartNumber - b.PartNumber);
     await completeMultipartUpload({ jobId, key, uploadId, parts });
   } catch (err) {
     // Abort on failure
@@ -168,44 +176,6 @@ export const uploadImagesZipMultipart = async (
     throw err;
   }
 };
-
-async function uploadPartWithRetries(
-  url: string,
-  body: Blob,
-  contentType: string,
-  maxRetries: number
-): Promise<string> {
-  let attempt = 0;
-  let lastError: unknown;
-
-  while (attempt < maxRetries) {
-    attempt++;
-    try {
-      const response = await fetch(url, {
-        method: "PUT",
-        headers: { "Content-Type": contentType },
-        body,
-      });
-      if (!response.ok) {
-        throw new Error(`Upload part failed (${response.status})`);
-      }
-      const etag =
-        response.headers.get("etag") || response.headers.get("ETag");
-      if (!etag) {
-        throw new Error("Missing ETag from S3 response");
-      }
-      return etag;
-    } catch (err) {
-      lastError = err;
-      if (attempt >= maxRetries) break;
-      await new Promise((r) => setTimeout(r, 500 * 2 ** (attempt - 1)));
-    }
-  }
-
-  throw lastError instanceof Error
-    ? lastError
-    : new Error("Part upload failed");
-}
 
 // ─── List / Get Jobs ─────────────────────────────────────────
 

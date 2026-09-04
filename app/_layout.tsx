@@ -6,12 +6,12 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { ToastProvider } from "./shared/components/Toast";
+import { ToastProvider } from "@/shared/components/Toast";
 
 import "../global.css";
-import { queryClient } from "./lib/queryClient";
-import setupQueryPersistence from "./lib/queryPersist";
-import { colors } from "./shared/constants/theme";
+import { queryClient } from "@/lib/queryClient";
+import setupQueryPersistence from "@/lib/queryPersist";
+import { colors } from "@/shared/constants/theme";
 
 export default function RootLayout() {
   const router = useRouter();

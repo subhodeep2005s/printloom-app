@@ -1,4 +1,4 @@
-import axiosInstance from "@/app/lib/axiosInstance";
+import axiosInstance from "@/lib/axiosInstance";
 import { ApiResponse } from "../types/auth/types";
 import { PrintPayload, TemplateDto } from "../types/print/types";
 

@@ -1,4 +1,4 @@
-import { useMe } from "@/app/shared/api/auth.query";
+import { useMe } from "@/shared/api/auth.query";
 import { Redirect } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { useEffect } from "react";
